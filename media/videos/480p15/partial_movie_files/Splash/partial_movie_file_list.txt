@@ -1,5 +1,0 @@
-# This file is used internally by FFMPEG.
-file 'file:C:/Users/holle/OneDrive/Desktop/VSCode/Software Engineering/Laser Tag Project/soft-engr-laser-tag/media/videos/480p15/partial_movie_files/Splash/1185818338_1890678736_223132457.mp4'
-file 'file:C:/Users/holle/OneDrive/Desktop/VSCode/Software Engineering/Laser Tag Project/soft-engr-laser-tag/media/videos/480p15/partial_movie_files/Splash/624642324_4217992463_1481074857.mp4'
-file 'file:C:/Users/holle/OneDrive/Desktop/VSCode/Software Engineering/Laser Tag Project/soft-engr-laser-tag/media/videos/480p15/partial_movie_files/Splash/624642324_1271309226_2853925336.mp4'
-file 'file:C:/Users/holle/OneDrive/Desktop/VSCode/Software Engineering/Laser Tag Project/soft-engr-laser-tag/media/videos/480p15/partial_movie_files/Splash/624642324_4217992463_235366109.mp4'
