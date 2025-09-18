@@ -53,7 +53,7 @@ class ScoreboardApp(QMainWindow):
         # Load player data from JSON
         with open("test-database.json", "r") as f:
             players = json.load(f)
-
+1
         # Example split: first half = Red Team, second half = Green Team
         # (Later you can actually split by team in your JSON)
         red_team = players[:len(players)//2]
@@ -92,7 +92,7 @@ class ScoreboardApp(QMainWindow):
 
         # --- Table Setup ---
         table = QTableWidget(len(players), 2)
-        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setEditTriggers(QTableWidget.NoEditTriggers) 
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
@@ -104,7 +104,7 @@ class ScoreboardApp(QMainWindow):
         )
 
         # Fill player rows
-        for row, p in enumerate(players):
+        for row, p in enumerate(players):                                           #enumerate: adds counter to each item.
             name_item = QTableWidgetItem(p["name"])
             score_item = QTableWidgetItem(str(p["score"]))
             name_item.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
