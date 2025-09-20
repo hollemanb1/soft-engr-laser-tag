@@ -3,16 +3,18 @@ import pygame
 
 # configurations for timing of the animation
 
-WIDTH, HEIGHT = 1080, 720
-SPLASH_MS = 2500            # Show text before the TV turn-off
-SHUTTER_MS = 1000           # Total TV shutter time (top+bottom close)
+WIDTH, HEIGHT = 1080, 720   # Screen dimensions
+SPLASH_MS = 1500            # Show text before the TV turn-off
+SHUTTER_MS = 700           # Total TV shutter time (top+bottom close)
 FLASH_MS = 700              # White scanline flash time
 FLASH_ADVANCE = 150         # Start flash a bit before shutter end
 FPS = 120                   # Frame rate
-BAND_HEIGHT = 96     # ~1 inch on a 96-DPI-ish display
-HOLD_MS = 1000       # how long to hold the band
-FADE_MS = 800        # how long to fade inward
-
+BAND_HEIGHT = 6     # ~1 inch on a 96-DPI-ish display
+HOLD_MS = 150       # how long to hold the band
+FADE_MS = 500        # how long to fade inward
+TARGET_R = 55
+GROW_OFFSET = 0  # start circle growth ~60% into the band fade
+GROW_DUR = FADE_MS               # grow to full size by end of band fade
 
 # we will have 5 states:
 
@@ -23,7 +25,6 @@ STATE_SPLASH, STATE_TV, STATE_BAND_HOLD, STATE_BAND_FADE, STATE_MAIN = range(5) 
 def clamp(x, a, b):  # bounds the value of x between a and b
     # forces x to be between a and b
     return max(a, min(b, x))
-
 
 def smooth_step(x):
     # smooth 0..1 easing function for nice non-linear motion (slow start/end)
@@ -57,6 +58,8 @@ def draw_black_shutters(surface, rect, t, band_height=96, color=(0, 0, 0)):
     leaving a horizontal white band of thickness `band_height`.
     t goes 0..1 over the duration.
     """
+    #  why do we clamp?
+    # because if t is less than 0 or greater than 1, the calculations for the shutter heights could produce incorrect results.
     t = clamp(t, 0, 1)
     total_close = rect.height - band_height  # total black area to cover
     half_close = int((total_close / 2) * t)
@@ -90,6 +93,23 @@ def draw_flash_line(surface, rect, t, duration, width=38, color=(255, 255, 255))
 
     if thickness <= 0 or opacity <= 0:
         return
+    
+def draw_centered_circle(surface, color=(255,255,255), radius=75, alpha=255, width=0, start_time=None, durtion=None, now=None, ease=True):
+    # Create a temporary surface with per-pixel alpha
+    circle_surf = pygame.Surface((radius*2, radius*2), pygame.SRCALPHA)
+
+    # Add alpha into the color
+    circle_color = (*color, alpha)
+
+    # Draw circle onto the temp surface
+    pygame.draw.circle(circle_surf, circle_color, (radius, radius), radius, width)
+
+    # Blit onto the main surface, centered
+    rect = circle_surf.get_rect(center=(WIDTH//2, HEIGHT//2))
+    surface.blit(circle_surf, rect)
+
+    
+    
 
 def draw_white_band(surface, rect, band_height=BAND_HEIGHT, width_frac=1.0):
     """Draw a centered white horizontal band with width_frac (0..1) of screen width."""
@@ -164,13 +184,23 @@ if __name__ == "__main__":
             # Shrink white band from both sides toward center over FADE_MS
             elapsed = now - t0
             screen.fill((0, 0, 0))
-            f = clamp(elapsed / FADE_MS, 0.0, 1.0)     # 0..1
-            width_frac = 1.0 - f                       # 1 -> 0
-            draw_white_band(screen, full, BAND_HEIGHT, width_frac)
+
+            fraction = clamp(elapsed / FADE_MS, 0.0, 1.0)     
+            draw_white_band(screen, full, BAND_HEIGHT,  1.0 - fraction)
+
+            growth = clamp((elapsed - GROW_OFFSET) / GROW_DUR, 0.0, 1.0)
+            growth = smooth_step(growth)           
+
+            radius = max(1, int(TARGET_R * growth))
+            alpha = max(40, int(255 * growth))
+
+            draw_centered_circle(screen, color=(255,255,255), radius=radius, alpha=alpha, width=0)
+
 
             if elapsed >= FADE_MS:
                 state = STATE_MAIN
                 t0 = now
+
 
         else:  # STATE_MAIN
             msg = font.render("Main Screen", True, (240, 240, 240))
@@ -183,3 +213,4 @@ if __name__ == "__main__":
 
     pygame.quit()
     sys.exit()
+
