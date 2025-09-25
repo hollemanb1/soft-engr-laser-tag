@@ -53,7 +53,6 @@ class ScoreboardApp(QMainWindow):
         # Load player data from JSON
         with open("test-database.json", "r") as f:
             players = json.load(f)
-1
         # Example split: first half = Red Team, second half = Green Team
         # (Later you can actually split by team in your JSON)
         red_team = players[:len(players)//2]
