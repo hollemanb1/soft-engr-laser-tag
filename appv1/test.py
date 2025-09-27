@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QApplication, QPushButton
+from PySide6.QtWidgets import QApplication, QPushButton
 import sys
 
 app = QApplication(sys.argv)
@@ -16,4 +16,4 @@ QPushButton:hover {
 btn = QPushButton("Hover me")
 btn.show()
 
-sys.exit(app.exec_())
+sys.exit(app.exec())

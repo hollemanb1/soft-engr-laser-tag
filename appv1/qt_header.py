@@ -1,13 +1,13 @@
 # header.py
 import sys, json, time
-from PyQt5.QtWidgets import (
+from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QTextEdit, QSplashScreen,
     QListWidget, QStackedWidget, QLineEdit, QApplication,
-    QMainWindow, QSizePolicy
+    QMainWindow, QSizePolicy, QAbstractItemView
 )
-from PyQt5.QtGui import QPixmap, QFont
-from PyQt5.QtCore import Qt, QTimer
+from PySide6.QtGui import QPixmap, QFont
+from PySide6.QtCore import Qt, QTimer
 
 
 ##### CONSTRUCTORS #####
@@ -305,7 +305,8 @@ def Scoreboard_Page(players):
 ##### TEAM TABLE BUILDER #####
 def Build_Team_Table(team_name, players, team_color):
     table = QTableWidget(len(players), 2)
-    table.setEditTriggers(QTableWidget.NoEditTriggers)
+    #table.setEditTriggers(QTableWidget.NoEditTriggers)
+    table.setEditTriggers(QAbstractItemView.NoEditTriggers)
     table.verticalHeader().setVisible(False)
     table.horizontalHeader().setVisible(False)
     table.setShowGrid(False)

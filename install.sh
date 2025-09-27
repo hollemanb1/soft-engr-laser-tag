@@ -4,13 +4,23 @@ set -euo pipefail
 echo "[+] Updating package list..."
 sudo apt-get update -y
 
-echo "[+] Installing Python3 and venv..."
-sudo apt-get install -y python3 python3-venv python3-pip
+echo "[+] Installing Python3, venv, and Qt XCB dep..."
+sudo apt-get install -y python3 python3-venv python3-pip libxcb-cursor0
 
 # create venv if it doesn’t exist
 if [ ! -d "venvc" ]; then
     echo "[+] Creating virtual environment: venvc"
     python3 -m venv venvc
+fi
+
+# ensure QT_DEBUG_PLUGINS is set whenever this venv is activated
+if ! grep -q 'QT_DEBUG_PLUGINS' venvc/bin/activate; then
+    echo "[+] Adding QT_DEBUG_PLUGINS=1 to venv activation"
+    {
+        echo ""
+        echo "# Enable Qt plugin debug output for PySide6/PyQt"
+        echo "export QT_DEBUG_PLUGINS=1"
+    } >> venvc/bin/activate
 fi
 
 echo "[+] Activating virtual environment..."
@@ -27,6 +37,41 @@ fi
 
 echo "[+] Setup complete. Virtual environment is ready."
 echo "To activate later, run: source venvc/bin/activate"
+echo "QT_DEBUG_PLUGINS=1 will be set automatically when you activate this venv."
+
+
+
+
+
+# #!/usr/bin/env bash
+# set -euo pipefail
+
+# echo "[+] Updating package list..."
+# sudo apt-get update -y
+
+# echo "[+] Installing Python3 and venv..."
+# sudo apt-get install -y python3 python3-venv python3-pip
+
+# # create venv if it doesn’t exist
+# if [ ! -d "venvc" ]; then
+#     echo "[+] Creating virtual environment: venvc"
+#     python3 -m venv venvc
+# fi
+
+# echo "[+] Activating virtual environment..."
+# # shellcheck source=/dev/null
+# source venvc/bin/activate
+
+# if [ -f "requirements.txt" ]; then
+#     echo "[+] Installing dependencies from requirements.txt..."
+#     pip install --upgrade pip
+#     pip install -r requirements.txt
+# else
+#     echo "[!] requirements.txt not found. Skipping pip install."
+# fi
+
+# echo "[+] Setup complete. Virtual environment is ready."
+# echo "To activate later, run: source venvc/bin/activate"
 
 
 
