@@ -1,11 +1,16 @@
 import sys
 import json
-from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit
-)
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QFont
+# from PyQt5.QtWidgets import (
+#     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+#     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit
+# )
+# from PyQt5.QtCore import Qt
+# from PyQt5.QtGui import QFont
+
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
+    QLabel, QPushButton, QTableWidget, QTableWidgetItem, QTextEdit, QAbstractItemView)
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
 class ScoreboardApp(QMainWindow):
     def __init__(self):
@@ -91,7 +96,8 @@ class ScoreboardApp(QMainWindow):
 
         # --- Table Setup ---
         table = QTableWidget(len(players), 2)
-        table.setEditTriggers(QTableWidget.NoEditTriggers) 
+        #table.setEditTriggers(QTableWidget.NoEditTriggers) 
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setVisible(False)
         table.setShowGrid(False)
@@ -161,4 +167,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = ScoreboardApp()
     window.show()
-    sys.exit(app.exec_())
+    #sys.exit(app.exec_())
+    sys.exit(app.exec())
+

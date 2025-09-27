@@ -1,111 +1,32 @@
 #!/usr/bin/env bash
-set -Eeuo pipefail
+set -euo pipefail
 
-# ---- Settings ----
-VENV_DIR="venvc"
-REQS_FILE="requirements.txt"
-LOG_FILE="pip_install.log"
-
-echo "[+] Updating apt and installing Python + build prerequisites..."
+echo "[+] Updating package list..."
 sudo apt-get update -y
 
-# Core Python & venv
+echo "[+] Installing Python3 and venv..."
 sudo apt-get install -y python3 python3-venv python3-pip
 
-# Common build deps that fix 'metadata-generation-failed' for many packages
-# - build-essential, python3-dev: compile C/C++ extensions
-# - pkg-config, libffi-dev, libssl-dev: cryptography/ffi deps
-# - rustc, cargo: many modern wheels (e.g., cryptography>=41, orjson) need Rust
-# - Optional but helpful: libjpeg-dev, zlib1g-dev, libxml2-dev, libxslt1-dev
-sudo apt-get install -y \
-  build-essential python3-dev pkg-config \
-  libffi-dev libssl-dev \
-  rustc cargo \
-  libjpeg-dev zlib1g-dev libxml2-dev libxslt1-dev
-
-# Create venv if missing
-if [ ! -d "$VENV_DIR" ]; then
-  echo "[+] Creating virtual environment: $VENV_DIR"
-  python3 -m venv "$VENV_DIR"
+# create venv if it doesn’t exist
+if [ ! -d "venvc" ]; then
+    echo "[+] Creating virtual environment: venvc"
+    python3 -m venv venvc
 fi
 
 echo "[+] Activating virtual environment..."
-# shellcheck disable=SC1091
-source "$VENV_DIR/bin/activate"
+# shellcheck source=/dev/null
+source venvc/bin/activate
 
-# Ensure latest pip tooling to reduce build issues
-echo "[+] Upgrading pip, setuptools, wheel..."
-python -m pip install --upgrade pip setuptools wheel
-
-# Optional helper for PEP 517 projects that use setuptools_scm, hatchling, etc.
-python -m pip install --upgrade setuptools-scm hatchling tomli || true
-
-if [ -f "$REQS_FILE" ]; then
-  echo "[+] Installing dependencies from $REQS_FILE (logging to $LOG_FILE)..."
-  # Capture detailed logs to help diagnose any build-backend failures
-  # --use-pep517 ensures modern builds; --no-cache-dir avoids stale wheels
-  # If something fails, we show the tail of the log.
-  set +e
-  python -m pip install --use-pep517 --no-cache-dir -r "$REQS_FILE" 2>&1 | tee "$LOG_FILE"
-  status=${PIPESTATUS[0]}
-  set -e
-  if [ $status -ne 0 ]; then
-    echo ""
-    echo "[!] pip reported an error (likely from a package build subprocess)."
-    echo "    Showing last 50 lines of $LOG_FILE for the failing package:"
-    tail -n 50 "$LOG_FILE" || true
-    echo ""
-    echo "Tips:"
-    echo "  • Ensure the failing package lists prebuilt wheels for your Python/Debian combo."
-    echo "  • If it's 'cryptography' or anything Rust-based, Rust is already installed here."
-    echo "  • If it's a DB driver (e.g., psycopg2), you may need libpq-dev."
-    echo "  • For MySQL drivers, you may need default-libmysqlclient-dev."
-    echo "  • Re-run after adding the needed -dev package."
-  fi
+if [ -f "requirements.txt" ]; then
+    echo "[+] Installing dependencies from requirements.txt..."
+    pip install --upgrade pip
+    pip install -r requirements.txt
 else
-  echo "[!] $REQS_FILE not found. Skipping pip install."
+    echo "[!] requirements.txt not found. Skipping pip install."
 fi
 
-echo ""
-echo "[+] Done. Dropping you into the virtualenv shell now."
-echo "    To leave: 'exit' (you'll return to your previous shell)."
-# Replace the current process with an interactive shell that keeps the venv active
-exec bash -i
-
-
-
-
-
-
-# #!/usr/bin/env bash
-# set -euo pipefail
-
-# echo "[+] Updating package list..."
-# sudo apt-get update -y
-
-# echo "[+] Installing Python3 and venv..."
-# sudo apt-get install -y python3 python3-venv python3-pip
-
-# # create venv if it doesn’t exist
-# if [ ! -d "venvc" ]; then
-#     echo "[+] Creating virtual environment: venvc"
-#     python3 -m venv venvc
-# fi
-
-# echo "[+] Activating virtual environment..."
-# # shellcheck source=/dev/null
-# source venvc/bin/activate
-
-# if [ -f "requirements.txt" ]; then
-#     echo "[+] Installing dependencies from requirements.txt..."
-#     pip install --upgrade pip
-#     pip install -r requirements.txt
-# else
-#     echo "[!] requirements.txt not found. Skipping pip install."
-# fi
-
-# echo "[+] Setup complete. Virtual environment is ready."
-# echo "To activate later, run: source venvc/bin/activate"
+echo "[+] Setup complete. Virtual environment is ready."
+echo "To activate later, run: source venvc/bin/activate"
 
 
 
