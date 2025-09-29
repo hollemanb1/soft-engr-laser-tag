@@ -1,4 +1,13 @@
 # soft-engr-laser-tag
-Project for Software Engineering Fall 25\
-Created by: Brody Holleman, Warren Roberts, Sam Kim, Mark Livingston\
-To start open install.sh
+Project for Software Engineering Fall 25
+Created by: Brody Holleman, Warren Roberts, Sam Kim, Mark Livingston
+
+Steps:
+1st:
+Clone repository and open its directory,
+then run ./install.sh,
+after input source venvc/bin/activate,
+change directories to appv3 using cd appv3,
+finally run main.py to start the simulatiom
+
+
