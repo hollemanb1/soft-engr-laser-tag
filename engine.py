@@ -42,7 +42,7 @@ class Player:
 
 # --- Main game engine ---
 class GameEngine:
-    def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=30):
+    def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=300):
         # Active roster for the current match (keyed by hardware_id)
         self.players: dict[str, Player] = {}
 

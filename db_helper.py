@@ -47,7 +47,7 @@ def add_player(player_id: int, codename: str) -> bool:
     try:
         cur.execute(
             "INSERT INTO players (id, codename) VALUES (%s, %s);",
-            (player_id, codename,),
+            (player_id, codename),
         )
         conn.commit()
         success = True
