@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "[+] Updating package list..."
+echo "Updating package list..."
 sudo apt-get update -y
 
-echo "[+] Installing system dependencies for Python, venv, and Qt/XCB..."
+# installing xcb, cursor, and all necessary depensencies for PySide6
+
+echo "Installing system dependencies for Python, venv, and Qt/XCB..."
 sudo apt-get install -y \
   python3 python3-venv python3-pip \
   libx11-6 libx11-xcb1 libxext6 libxrender1 libxkbcommon-x11-0 \
@@ -15,39 +17,41 @@ sudo apt-get install -y \
   libglu1-mesa \
   libqt6gui6 libqt6widgets6 libqt6waylandclient6
 
+# if there is no virtual enviroment create one
 if [ ! -d "venvc" ]; then
   echo "[+] Creating virtual environment: venvc"
   python3 -m venv venvc
 fi
 
-echo "[+] Activating virtual environment..."
-# shellcheck disable=SC1091
+echo "Activating virtual environment..."
+# get in the virtual enviroment
 source venvc/bin/activate
 
-echo "[+] Upgrading pip..."
+echo "Upgrading pip..."
 pip install --upgrade pip
 
-# Prevent plugin path conflicts
+# prevent plugin path conflicts
 unset QT_PLUGIN_PATH
 export QT_QPA_PLATFORM=xcb
 
-# Enforce ONE Qt binding (default: PySide6)
-# If user asked for PyQt5, comment PySide6 and install PyQt5 instead.
-echo "[+] Ensuring only one Qt binding is installed..."
+# enforce 1 Qt binding (PySide6)
+# if user asked for PyQt5, comment PySide6 and install PyQt5 instead.
+echo "Ensuring only one Qt binding is installed..."
 pip uninstall -y PyQt5 PyQt5-Qt5 PyQt5-sip PySide2 || true
 pip install -U PySide6
 
 if [ -f "requirements.txt" ]; then
-  # Guard: warn if both bindings appear in requirements.txt
+  # warn if both bindings appear in requirements.txt
   if grep -qiE '(^|\s)(PyQt5|PySide2)\b' requirements.txt && grep -qiE '(^|\s)PySide6\b' requirements.txt; then
     echo "[-] ERROR: requirements.txt includes both PyQt/PySide variants. Keep ONE (recommend PySide6)."
     exit 2
   fi
-  echo "[+] Installing requirements.txt..."
+  # install all listed in requiremtnsts.txt
+  echo "Installing requirements.txt..."
   pip install -r requirements.txt
 else
-  echo "[i] requirements.txt not found. Skipping pip install."
+  echo "requirements.txt not found. Skipping pip install."
 fi
 
-echo "[✓] Setup complete."
+echo "Setup complete."
 echo "To activate later: source venvc/bin/activate"
