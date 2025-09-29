@@ -9,11 +9,9 @@ samuelykim  -->   Sam Kim\
 
 
 Steps:
-1st:
-Clone repository and open its directory,
-then run ./install.sh,
-after input source venvc/bin/activate,
-finally run main.py to start the simulation
+- Clone repository and open its directory
+- run ./install.sh, after input source venvc/bin/activate,
+- run '''python3 main.py''' to start the simulation
 
 
 
