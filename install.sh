@@ -1,45 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
-#e: exit on first error
-#u: error on unset variables
-#o: fail if any command in a pipeline fails
-#pipefall: fail if any command in a pipeline fails
 
-echo "Updating package list..."
+echo "[+] Updating package list..."
 sudo apt-get update -y
 
-#use sudo apt-get install -y to avoid prompts, then install python3, venv, pip, and libxcb-cursor0
-#
-echo "Install dependencies..."
-sudo apt-get install -y python3 python3-venv python3-pip libxcb-cursor0
+echo "[+] Installing system dependencies for Python, venv, and Qt/XCB..."
+sudo apt-get install -y \
+  python3 python3-venv python3-pip \
+  libx11-6 libx11-xcb1 libxext6 libxrender1 libxkbcommon-x11-0 \
+  libxcb1 libxcb-cursor0 libxcb-image0 libxcb-icccm4 libxcb-keysyms1 \
+  libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-shm0 \
+  libxcb-sync1 libxcb-xfixes0 libxcb-xinerama0 libxcb-xkb1 \
+  libglib2.0-0 libsm6 libdbus-1-3 libfontconfig1 libfreetype6 \
+  libglu1-mesa \
+  libqt6gui6 libqt6widgets6 libqt6waylandclient6
 
-# create venv if it doesn’t exist
 if [ ! -d "venvc" ]; then
-    echo "[+] Creating virtual environment: venvc"
-    python3 -m venv venvc
+  echo "[+] Creating virtual environment: venvc"
+  python3 -m venv venvc
 fi
 
-# ensure QT_DEBUG_PLUGINS is set whenever this venv is activated
-# if ! grep -q 'QT_DEBUG_PLUGINS' venvc/bin/activate; then
-#     echo "[+] Adding QT_DEBUG_PLUGINS=1 to venv activation"
-#     {
-#         echo ""
-#         echo "# Enable Qt plugin debug output for PySide6/PyQt"
-#         echo "export QT_DEBUG_PLUGINS=1"
-#     } >> venvc/bin/activate
-# fi
-
-echo "Activating virtual environment..."
-# shellcheck source=/dev/null
+echo "[+] Activating virtual environment..."
+# shellcheck disable=SC1091
 source venvc/bin/activate
 
+echo "[+] Upgrading pip..."
+pip install --upgrade pip
+
+# Prevent plugin path conflicts
+unset QT_PLUGIN_PATH
+export QT_QPA_PLATFORM=xcb
+
+# Enforce ONE Qt binding (default: PySide6)
+# If user asked for PyQt5, comment PySide6 and install PyQt5 instead.
+echo "[+] Ensuring only one Qt binding is installed..."
+pip uninstall -y PyQt5 PyQt5-Qt5 PyQt5-sip PySide2 || true
+pip install -U PySide6
+
 if [ -f "requirements.txt" ]; then
-    echo "Installing dependencies from requirements.txt..."
-    pip install --upgrade pip
-    pip install -r requirements.txt
+  # Guard: warn if both bindings appear in requirements.txt
+  if grep -qiE '(^|\s)(PyQt5|PySide2)\b' requirements.txt && grep -qiE '(^|\s)PySide6\b' requirements.txt; then
+    echo "[-] ERROR: requirements.txt includes both PyQt/PySide variants. Keep ONE (recommend PySide6)."
+    exit 2
+  fi
+  echo "[+] Installing requirements.txt..."
+  pip install -r requirements.txt
 else
-    echo "requirements.txt not found. Skipping pip install."
+  echo "[i] requirements.txt not found. Skipping pip install."
 fi
 
-echo "Setup complete, and virtual environment is ready."
-echo "To activate, run: source venvc/bin/activate"
+echo "[✓] Setup complete."
+echo "To activate later: source venvc/bin/activate"
