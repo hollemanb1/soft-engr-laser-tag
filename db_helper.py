@@ -45,19 +45,19 @@ def add_player(player_id: int, codename: str) -> bool:
     cur = conn.cursor()
     
     try:
-		cur.execute(
-			"INSERT INTO players (id, codename) VALUES (%s, %s);"
-			(player_id, codename,),
-		)
-		conn.commit()
-		success = True
+        cur.execute(
+            "INSERT INTO players (id, codename) VALUES (%s, %s);",
+            (player_id, codename,),
+        )
+        conn.commit()
+        success = True
     except psycopg2.Error as e:
-		print(f"[db_helper] add_player error: {e}")
-		conn.rollback()
-		success = False
-	finally:
-		cur.close()
-		conn.close()
+        print(f"[db_helper] add_player error: {e}")
+        conn.rollback()
+        success = False
+    finally:
+        cur.close()
+        conn.close()
 
     return success
 
