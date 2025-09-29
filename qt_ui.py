@@ -19,14 +19,14 @@ Why keep this separate?
 import sys, json, time
 from functools import partial
 
-from PySide6.QtWidgets import (
+from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QTextEdit, QSplashScreen,
     QListWidget, QStackedWidget, QLineEdit, QApplication,
     QMainWindow, QSizePolicy
 )
-from PySide6.QtGui import QPixmap, QFont
-from PySide6.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtCore import Qt, QTimer
 from db_helper import search_player, add_player  # add this import
 
 
