@@ -22,6 +22,7 @@ import threading
 import socket
 import queue
 import time
+import random
 
 
 # ---- Scoring rules ----

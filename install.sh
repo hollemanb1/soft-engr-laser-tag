@@ -9,10 +9,9 @@ echo "Updating package list..."
 sudo apt-get update -y
 
 #use sudo apt-get install -y to avoid prompts, then install python3, venv, pip, and libxcb-cursor0
-# libxcb-cursor0 is needed for PyQt5
+#
 echo "Install dependencies..."
 sudo apt-get install -y python3 python3-venv python3-pip libxcb-cursor0
-sudo apt install python python3-pyqt5 python3-pyqt5.qtquick python3-pyqt5.qtsvg python3-psycopg2
 
 # create venv if it doesn’t exist
 if [ ! -d "venvc" ]; then
