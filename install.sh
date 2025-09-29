@@ -53,5 +53,30 @@ else
   echo "requirements.txt not found. Skipping pip install."
 fi
 
+# guarntee psycopg2 is present and importable 
+echo "[+] Verifying psycopg2 import..."
+set +e
+python - <<'PY'
+try:
+    import psycopg2
+    print("OK: psycopg2 is importable.")
+except Exception as e:
+    import sys
+    print("MISSING: psycopg2 not importable ->", e, file=sys.stderr)
+    sys.exit(1)
+PY
+status=$?
+set -e
+
+if [ $status -ne 0 ]; then
+    echo "[+] Installing psycopg2-binary explicitly..."
+    pip install -U 'psycopg2-binary>=2.9'
+    echo "[+] Re-checking psycopg2 import..."
+    python - <<'PY'
+import psycopg2
+print("OK: psycopg2 now importable. Version:", psycopg2.__version__)
+PY
+fi
+
 echo "Setup complete."
 echo "To activate later: source venvc/bin/activate"
