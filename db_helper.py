@@ -29,8 +29,8 @@ def init_db():
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS players (
-            id SERIAL PRIMARY KEY,
-            codename TEXT UNIQUE NOT NULL
+            id integer PRIMARY KEY,
+            codename varchar(255) NOT NULL
         );
         """
     )
@@ -39,33 +39,27 @@ def init_db():
     conn.close()
 
 
-def add_player(codename: str) -> int:
-    """
-    Insert a new player into DB.
-    Returns the assigned id.
-    """
+def add_player(player_id: int, codename: str) -> bool:
+	
     conn = get_connection()
     cur = conn.cursor()
-    cur.execute(
-        """
-        INSERT INTO players (codename)
-        VALUES (%s)
-        ON CONFLICT (codename) DO NOTHING
-        RETURNING id;
-        """,
-        (codename,),
-    )
-    row = cur.fetchone()
-    conn.commit()
-    cur.close()
-    conn.close()
+    
+    try:
+		cur.execute(
+			"INSERT INTO players (id, codename) VALUES (%s, %s);"
+			(player_id, codename,),
+		)
+		conn.commit()
+		success = True
+    except psycopg2.Error as e:
+		print(f"[db_helper] add_player error: {e}")
+		conn.rollback()
+		success = False
+	finally:
+		cur.close()
+		conn.close()
 
-    if row:
-        return row[0]
-
-    # If codename already existed, fetch its ID
-    existing = get_player_by_name(codename)
-    return existing["id"] if existing else None
+    return success
 
 
 def search_player(player_id: int):

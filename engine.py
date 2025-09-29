@@ -147,7 +147,7 @@ class GameEngine:
         hw_id = f"hw0x{rand_num:04x}"
 
         # Assign team based on odd/even rule
-        team = "red" if rand_num % 2 == 1 else "green"
+        team = "red" if rand_num % 2 == 0 else "green"
 
         # Add to active players
         if hw_id not in self.players:

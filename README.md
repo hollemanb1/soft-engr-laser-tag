@@ -7,7 +7,7 @@ Steps:
 Clone repository and open its directory,
 then run ./install.sh,
 after input source venvc/bin/activate,
-change directories to appv3 using cd appv3,
 finally run main.py to start the simulatiom
+
 
 

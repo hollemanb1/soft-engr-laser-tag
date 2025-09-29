@@ -248,9 +248,9 @@ def User_Page(engine):
         result = search_player(player_id)
 
         if result:
-            username = result["username"]
-            engine.join_player(username)
-            local_ui_player_list.addItem(f"{username} ({player_id})")
+            codename = result["codename"]
+            engine.join_player(codename)
+            local_ui_player_list.addItem(f"{codename} ({player_id})")
 
             search_button.setEnabled(False)
             search_button.setText("Player Added!")
@@ -262,34 +262,35 @@ def User_Page(engine):
             search_button.setEnabled(False)
             search_button.setText("Not Found")
             search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
-            id_input.show()
+            codename_input.show()
             add_button.show()
 
     def Add_User(line):
-        """Add a new player to the DB, then to the engine and UI list."""
-        username = search_input.text().strip()
-        if not username:
-            return
+        player_id = int(id_input.text())
+        codename = codename_input.text().strip()
 
-        # Add to DB → get new player_id
-        player_id = add_player(username)
+        success = add_player(player_id, codename)
 
-        # Add to engine
-        engine.join_player(username)
+        if success:
+            engine.join_player(codename)
+            local_ui_player_list.addItem(f"{codename} ({player_id})")
 
-        # Add to UI list
-        local_ui_player_list.addItem(f"{username} ({player_id})")
+            search_button.setEnabled(False)
+            search_button.setText("User Added!")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")
+            QTimer.singleShot(1500, Reset_User_UI)
+        else:
+            search_button.setEnabled(False)
+            search_button.setText("DB Error")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
 
-        # Flash "Added!" then reset
-        search_button.setEnabled(False)
-        search_button.setText("User Added!")
-        search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")
-        QTimer.singleShot(1500, Reset_User_UI)
 
     def Reset_User_UI():
-        id_input.hide()
+        codename_input.hide()
         add_button.hide()
-        search_input.clear()
+        id_input.clear()
+        codename_input.clear()
         search_button.setEnabled(True)
         search_button.setText("Search")
         search_button.setStyleSheet("background-color: #333; color: white;")
@@ -308,10 +309,10 @@ def User_Page(engine):
     )
 
     # Easier refs
-    search_input, id_input = refs["inputs"]
+    id_input, codename_input = refs["inputs"]
     search_button, add_button = refs["buttons"]
 
-    id_input.hide()
+    codename_input.hide()
     add_button.hide()
 
     # --- Local player list widget ---
