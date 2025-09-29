@@ -13,8 +13,8 @@ Main entry point for the Photon Game.
 """
 
 import sys, time
-from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
+from PyQt5.QtCore import QTimer
 
 from qt_ui import ScoreboardWindow, Start_App   # <-- your old qt_header.py (rename to qt_ui.py)
 from engine import GameEngine                   # <-- new consolidated game logic
