@@ -17,18 +17,18 @@ Networking defaults (match generator v2):
 - Receive (hits) on port 7501
 - Send (acks / start / stop / join broadcasts) to port 7500 at self.ip
 """
-
+# Necessary Import Statements
 import threading
-import socket
+import socket # UDP Sockets
 import queue
 import time
 import random
 
 
 # ---- Scoring rules ----
-NORMAL_HIT_POINTS = 10
-BASE_43_POINTS    = 100
-BASE_53_POINTS    = 100
+NORMAL_HIT_POINTS = 10 # 10 Points for P2P combat
+BASE_43_POINTS    = 100 # 100 Points for Base 43
+BASE_53_POINTS    = 500 # 500 Points for Base 53
 
 
 # --- Basic player object ---
