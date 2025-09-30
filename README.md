@@ -3,7 +3,7 @@ Project for Software Engineering Fall 25
 Created by: Brody Holleman, Warren Roberts, Sam Kim, Mark Livingston\
 
 warrenslee  -->   Warren Roberts\
-mark-wl-xyz -->   Mark Livingston\
+lowlevel-vampyre -->   Mark Livingston\
 hollemanb1  -->   Brody Holleman\
 samuelykim  -->   Sam Kim\
 
