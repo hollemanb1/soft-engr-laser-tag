@@ -96,6 +96,120 @@ class GameEngine:
         if not self.running:
             return
         
+        # Turn running marker off
+        self.running = False
+        
+        # Buffer time
+        time.sleep(0.2)
+        
+        # Close Sockets
+        try:
+            if self.recv_sock:
+                self.recv_sock.accept
+        finally:
+            self.recv_sock = None
+            
+        try:
+            if self.send_sock:
+                self.send_sock.close()
+        finally:
+            self.send_sock = None
+            
+        print("[engine] Game stopped")
+        
+    def join_player(self, username: str):
+        """Add new player with auto-gen hardware ID/team"""
+        
+        # Generate a random 4-digit hex hardware ID
+        rand_num = random.randint(1, 9999)
+        hw_id = f"hw0x{rand_num:04x}"
+        
+        #Assign team (Even = Red, Odd = Green)
+        team = "red" if rand_num % 2 == 0 else "green"
+        
+        # Add new player to Player List
+        if hw_id not in self.players:
+            self.players[hw_id] = Player(hw_id, username, team)
+            print(f"[engine] Player joined: {username} ({hw_id}) [{team}]")
+        else:
+            # If collision (unlikely), regenrate player
+            print(f"[engine] Player joined: {username} ({hw_id}) [{team}]")
+            return self.join_player(username)
+        
+        # Register Broadcast
+        self.send_text(f"REG: {hw_id}:{username}:{team}")
+        
+    # Remove Specific Player    
+    def remove_player(self, hw_id: str):
+        if hw_id in self.players:
+            print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
+            del self.players[hw_id]
+            
+    # Clear Player List
+    def clear_player_list(self):
+        for hw_id in self.players:
+            print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
+            del self.players[hw_id]  
+            
+    # | Network Help |
+    def send_code(self, code: str):
+        """Queue code to be sent ('202', '221')"""
+        self.send_queue.put(str(code))
+        
+    def send_text(self, text: str):
+        """Queue a string message to be sent"""
+        self.send_queue.put(str(text)) 
+        
+    # |Event Application (Internal) |
+    def _apply_hit(self, attacker_hwid: str, target_code: str):
+        """Apply the scoring/broadcast rules for incoming 'A:B' string"""
+        attacker = self.players.get(attacker_hwid)
+        if attacker is None:
+            self.send_text("ERR:unknown-attacker")
+            print(f"[engine] Ignored event: unknown attacker '{attacker_hwid}'")
+            return
+        
+        # | Base Hits |
+        if target_code == "43": # Green Base Hit: Red Team + 100
+            if attacker.team == "red":
+                attacker.score += BASE_43_HIT
+                print(f"[engine] Red Base Score! {attacker.username} + {BASE_43_HIT}")
+                self.send_code("43")
+                return
+            
+        if target_code == "53": # Green Base Hit: Red Team + 100
+            if attacker.team == "green":
+                attacker.score += BASE_53_HIT
+                print(f"[engine] Green Base Score! {attacker.username} + {BASE_53_HIT}")
+                self.send_code("53")
+                return
+            
+        # | Player Hits |
+        target = self.players.get(target_code)
+        if target is None:
+            self.send_text("ERR:unknown-target")
+            print(f"[engine] Ignored event: unknown target '{target_code}")
+            return
+        
+        if attacker.team == target.team: # Friendly Fire (-10 Points)
+            attacker.score -= 10
+            target.score -= 10
+            print(f"[engine] Friendly Fire: {attacker.username} ({attacker.hw_id})"
+                  f"hit {target.username} ({target.hw_id}), -10 each")
+            
+            # Broadcast Equipment IDs
+            self.send_code(attacker.hw_id)
+            self.send_code(target.hw_id)
+            return
+            
+        # Enemy Hit (Attacker +10 Points)
+        attacker.score += STANDARD_HIT
+        print(f"[engine] Ebemy hit: {attacker.username} ({attacker.hw_id})"
+              f"hit {target.username} ({target.hw_id}), -{STANDARD_HIT}")
+        
+        # Broadcast Target's Equipment ID
+        self.send_code(target.hw_id)
+                  
     # | Necessary Threads |
     def _listen_loop(self):
         """Recieves plain strings; expects each packet formatted as 'ATTACKER:TARGET"""
