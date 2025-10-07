@@ -95,6 +95,12 @@ class ScoreboardWindow(QMainWindow):
 
         # Show settings first
         self.stack.setCurrentIndex(0)
+        
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F5:
+            self.start_game()
+        else:
+            super().keyPressEvent(event)
 
     def start_game(self):
         self.engine.start_game()
