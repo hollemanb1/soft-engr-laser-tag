@@ -147,9 +147,10 @@ class GameEngine:
             
     # Clear Player List
     def clear_player_list(self):
-        for hw_id in self.players:
-            print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
-            del self.players[hw_id]  
+        self.players: dict[str, Player] = {}
+        # for hw_id in self.players:
+        #     print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
+        #     del self.players[hw_id]  
             
     # | Network Help |
     def send_code(self, code: str):

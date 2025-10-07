@@ -17,7 +17,7 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
 
 from qt_ui import ScoreboardWindow, Start_App   # <-- your old qt_header.py (rename to qt_ui.py)
-from engine import GameEngine                   # <-- new consolidated game logic -- CHANGE 'engine' to 'engine_mk2' to test new engine
+from engine_mk2 import GameEngine                   # <-- new consolidated game logic -- CHANGE 'engine' to 'engine_mk2' to test new engine
 
 def main():
     # --- Start Qt app ---

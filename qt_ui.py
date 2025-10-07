@@ -97,14 +97,14 @@ class ScoreboardWindow(QMainWindow):                                            
         # Show settings first
         self.stack.setCurrentIndex(0)
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_F5:
-            self.start_game()
-        elif event.key()== Qt.Key_F12:
-            self.engine.clear_player_list()
-            print("Player List Cleared!")
-        else:
-            super().keyPressEvent(event)
+    # def keyPressEvent(self, event):
+    #     if event.key() == Qt.Key_F5:
+    #         self.start_game()
+    #     # elif event.key()== Qt.Key_F12:
+    #     #     self.engine.clear_player_list()
+    #     #     print("Player List Cleared!")
+    #     else:
+    #         super().keyPressEvent(event)
 
 
     def start_game(self):
@@ -244,7 +244,17 @@ def build_form_box(box_title, fields):                                          
 
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
-def User_Page(engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
+def User_Page(start_callback, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F5:
+            start_callback()
+        elif event.key()== Qt.Key_F12:
+            engine.clear_player_list()
+            local_ui_player_list.clear()
+            print("Player List Cleared!")
+        else:
+            super().keyPressEvent(event)
+    
     def Search(line):           
         """Search for a player by ID and add them to the engine if found."""
         try:
@@ -427,7 +437,7 @@ def Build_Settings_Screen(start_callback, engine):
     body_layout.addWidget(menu)
 
     stack = QStackedWidget()
-    stack.addWidget(User_Page(engine))
+    stack.addWidget(User_Page(start_callback, engine))
     stack.addWidget(Network_Page(engine))
     body_layout.addWidget(stack, stretch=1)
 
