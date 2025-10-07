@@ -97,6 +97,13 @@ class ScoreboardWindow(QMainWindow):                                            
         # Show settings first
         self.stack.setCurrentIndex(0)
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F5:
+            self.start_game()
+        else:
+            super().keyPressEvent(event)
+
+
     def start_game(self):
         self.engine.start_game()
         self.stack.setCurrentIndex(1)
@@ -520,6 +527,7 @@ def Build_Team_Table(team_name, players, team_color):
 # need to create a game start countdown that goes from 30 ... 0 
 # this countdown will be at the top middle of the screen
 # it will appear while in the main
+# occurs after start is pressed and countdown begins
 
 def update_gametime(self, seconds):
     return 0
