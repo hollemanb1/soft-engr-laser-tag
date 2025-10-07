@@ -100,6 +100,9 @@ class ScoreboardWindow(QMainWindow):                                            
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F5:
             self.start_game()
+        elif event.key()== Qt.Key_F12:
+            self.engine.clear_player_list()
+            print("Player List Cleared!")
         else:
             super().keyPressEvent(event)
 
