@@ -95,11 +95,11 @@ class ScoreboardWindow(QMainWindow):                                            
         self.stack.addWidget(self.scoreboard_page)                                          # index 1
 
         # Show settings first
-        self.stack.setCurrentIndex(0)                                                       # sets index to 0, forcing settings page to be shown first; rather than scoreboard...
+        self.stack.setCurrentIndex(0)
 
-    def start_game(self):                                                                   # now we must define the process of starting the game
-        self.engine.start_game()                                                            # starts the game, and takes user to the scoreboard page
-        self.stack.setCurrentIndex(1)                                                       # switch to scoreboard page
+    def start_game(self):
+        self.engine.start_game()
+        self.stack.setCurrentIndex(1)
 
         # Start poll timer here
         self.poll_timer = QTimer(self)                                                      # poll: to regularly check for new events from the engine 
