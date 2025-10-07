@@ -47,103 +47,104 @@ def init_app():
 
     # Global stylesheet
     app.setStyleSheet("""
-        QWidget {
+        QWidget {                                                                           # Q Widget's default style (all containers, including windows)
             color: white;
             font-family: "Courier New";
             background-color: #333;
         }
-        QLineEdit {
+        QLineEdit {                                                                         # Q Line Edit's default style (text input box, single line)
             background-color: #333;
             border: 1px solid #555;
             padding: 4px;
             border-radius: 4px;
         }
-        QPushButton {
+        QPushButton {                                                                       # Q Push Button's default style (all buttons that are pushable)
             background-color: #444;
             border: 1px solid #666;
             padding: 6px;
             border-radius: 4px;
         }
-        QPushButton:hover {
+        QPushButton:hover {                                                                 # Hover effect for buttons (mouse over the button, not pressed) 
             background-color: #555;
         }
     """)
 
-    return app
+    return app                                                                              # basically this function will establish the app's customizable features,
+                                                                                            # allowing for quick changes that will be returned to be used in main
 
 
 
-class ScoreboardWindow(QMainWindow):
+class ScoreboardWindow(QMainWindow):                                                        # main window containing stacked settings and scoreboard pages
     def __init__(self, engine):
         super().__init__()
 
-        self.engine = engine
+        self.engine = engine                                                                # set engine reference for later usage
 
-        self.setWindowTitle("Game Launcher")
+        self.setWindowTitle("Game Launcher")                                                # window title
         self.setFixedSize(720, 480)
 
-        self.stack = QStackedWidget()
-        self.setCentralWidget(self.stack)
+        self.stack = QStackedWidget()                                                       # stack to hold multiple pages (settings + scoreboard)
+        self.setCentralWidget(self.stack)                                                   # set stack as central widget of main window, allowing for page switching
 
         # --- Build pages ---
-        self.settings_page = Build_Settings_Screen(self.start_game, self.engine)
-        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)
+        self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
+        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
 
         # --- Add pages to stack ---
-        self.stack.addWidget(self.settings_page)     # index 0
-        self.stack.addWidget(self.scoreboard_page)   # index 1
+        self.stack.addWidget(self.settings_page)                                            # index 0
+        self.stack.addWidget(self.scoreboard_page)                                          # index 1
 
         # Show settings first
-        self.stack.setCurrentIndex(0)
+        self.stack.setCurrentIndex(0)                                                       # sets index to 0, forcing settings page to be shown first; rather than scoreboard...
 
-    def start_game(self):
-        self.engine.start_game()
-        self.stack.setCurrentIndex(1)
+    def start_game(self):                                                                   # now we must define the process of starting the game
+        self.engine.start_game()                                                            # starts the game, and takes user to the scoreboard page
+        self.stack.setCurrentIndex(1)                                                       # switch to scoreboard page
 
         # Start poll timer here
-        self.poll_timer = QTimer(self)
-        self.poll_timer.timeout.connect(self._poll_events)
-        self.poll_timer.start(200)
+        self.poll_timer = QTimer(self)                                                      # poll: to regularly check for new events from the engine 
+        self.poll_timer.timeout.connect(self._poll_events)                                  # connect the timer's timeout signal to the _poll_events method
+        self.poll_timer.start(200)                                                          # poll every 200 ms
 
     def _poll_events(self):
-        self.engine.process_pending_events()
-        self.refresh_scoreboard()
+        self.engine.process_pending_events()                                                # process any pending events in the engine
+        self.refresh_scoreboard()                                                           # refresh scoreboard to display accurate data
 
     def refresh_scoreboard(self):
-        players = list(self.engine.players.values())
+        players = list(self.engine.players.values())                                        # refreshing scoreboard starts by creating a list of all players in the game
 
-        red_team = players[:len(players)//2]
-        green_team = players[len(players)//2:]
+        red_team = players[:len(players)//2]                                                # red team becomes the first half of the players list
+        green_team = players[len(players)//2:]                                              # green team becomes the second half of the players list
 
         # clear old scoreboard_page and rebuild
-        self.stack.removeWidget(self.stack.widget(1))
+        self.stack.removeWidget(self.stack.widget(1))                                       # remove old scoreboard page from stack,
 
         # Rebuild scoreboard with current teams
-        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings, red_team, green_team)
-        self.stack.addWidget(self.scoreboard_page)
-        self.stack.setCurrentIndex(1)
+        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings, red_team, green_team)   # rebuild scoreboard page with current teams
+        self.stack.addWidget(self.scoreboard_page)                                          # add new scoreboard page to stack
+        self.stack.setCurrentIndex(1)                                                       # set current index to 1 to show the scoreboard page
 
     def go_to_settings(self):
-        self.stack.setCurrentIndex(0)
+        self.stack.setCurrentIndex(0)                                                       # traversal: switch to settings page
 
     def go_to_scoreboard(self):
-        self.stack.setCurrentIndex(1)
+        self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
 
 
-
+                                                                                            
 
 
 # Simply used for showing the splash screen
 def Start_App(app, window):
-    splash = QLabel()
-    pixmap = QPixmap("logo.jpg").scaled(360, 229, Qt.KeepAspectRatioByExpanding)
-    splash.setPixmap(pixmap)
-    splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)
-    splash.setFixedSize(360, 229)
-    splash.show()
+    splash = QLabel()                                                                       # splash screen is a QLabel; it will display an image
+    pixmap = QPixmap("logo.jpg").scaled(360, 229, Qt.KeepAspectRatioByExpanding)            # load and scale the image to fit the splash screen size
+    splash.setPixmap(pixmap)                                                                # set the loaded image to the scaled splash QLabel
+    splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)                         # set window flags to make it a splash screen and frameless   
+    splash.setFixedSize(360, 229)                                                           # set fixed size for the splash screen
+    splash.show()                                                                           # make the splash screen visible
 
     # after 5 seconds, close splash and show main window
-    QTimer.singleShot(2000, lambda: (splash.close(), window.show()))
+    QTimer.singleShot(2000, lambda: (splash.close(), window.show()))                        # after 2 seconds, close splash and show main window, yay!
 
 # ----- End Constructors -----
 
@@ -189,118 +190,119 @@ def Start_App(app, window):
   #       (QWidget, dict):
   #           - The QWidget containing the whole box
   #           - A dict of { "inputs": [QLineEdit...], "buttons": [QPushButton...] }
+                                                                                            # notes:
 
-def build_form_box(box_title, fields):
+def build_form_box(box_title, fields):                                                      # builds a form box with a title and multiple fields                     
     box = QWidget()
     box.setStyleSheet("""
         background-color: #333;
         color: white;
         font-size: 16px;
     """)
-    box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
-    box_layout = QVBoxLayout(box)
+    box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)                           # make box expand horizontally but not vertically       
+    box_layout = QVBoxLayout(box)                                                           # vertical layout for the box         
 
     # Title
-    title = QLabel(box_title)
+    title = QLabel(box_title)                                                               # title label at the top of the box           
     title.setAlignment(Qt.AlignLeft)
     title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
     box_layout.addWidget(title)
 
     inputs, buttons = [], []
 
-    for field in fields:
-        row = QHBoxLayout()
+    for field in fields:                                                                    # for each field in the fields list, create a row with a line edit and button
+        row = QHBoxLayout()                                                                 # horizontal layout for each row
 
-        line = QLineEdit()
-        line.setPlaceholderText(field["field_placeholder"])
-        inputs.append(line)
+        line = QLineEdit()                                                                  # line edit for user input           
+        line.setPlaceholderText(field["field_placeholder"])                                 # set placeholder text from field dict
+        inputs.append(line)                                                                 # keep reference to line edit
 
-        button = QPushButton(field["button_text"])
+        button = QPushButton(field["button_text"])                                          # button with text from field dict
         button.setFixedSize(120, 30)
         buttons.append(button)
 
-        func = field["button_func"]
-        button.clicked.connect(partial(func, line))   # pass the line itself
+        func = field["button_func"]                                                         # get the function from the field dict
+        button.clicked.connect(partial(func, line))                                         # pass the line itself after button is clicked
 
-        row.addWidget(line)
-        row.addWidget(button)
-        box_layout.addLayout(row)
+        row.addWidget(line)                                                                 # adds the line edit to the row
+        row.addWidget(button)                                                               # adds the button to the row
+        box_layout.addLayout(row)                                                           # adds the row to the box layout, allowing it to be on our main box
 
-    return box, {"inputs": inputs, "buttons": buttons}
+    return box, {"inputs": inputs, "buttons": buttons}                                      # finally, return the box, inputs, and buttons for later reference
 
 
 
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
-def User_Page(engine):
-    def Search(line):
+def User_Page(engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
+    def Search(line):           
         """Search for a player by ID and add them to the engine if found."""
         try:
-            player_id = int(line.text())
+            player_id = int(line.text())                                                    # trys to get the player ID from the input line
         except ValueError:
             # Invalid input
-            search_button.setEnabled(False)
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input                    
             search_button.setText("Invalid ID")
             search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
             QTimer.singleShot(1500, Reset_User_UI)
             return
 
-        result = search_player(player_id)
+        result = search_player(player_id)                                                   # searches for the player with given ID and saves the result of search
 
-        if result:
+        if result:                                                                          # if the user is found in the DB, add them to the game engine. 
             codename = result["codename"]
-            engine.join_player(codename)
-            local_ui_player_list.addItem(f"{codename} ({player_id})")
+            engine.join_player(codename)                                                    # adds the player to the game engine
+            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
 
-            search_button.setEnabled(False)
-            search_button.setText("Player Added!")
-            search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")
-            QTimer.singleShot(1500, Reset_User_UI)
+            search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
+            search_button.setText("Player Added!")                                          # changes button text to indicate success               
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")       # changes button color to green, representing validity
+            QTimer.singleShot(1500, Reset_User_UI)                                          # resets the UI after 1.5 seconds, allowing for another search
 
-        else:
+        else:                                                                               # now if no player is found witht he ID inputted, the button operations will go as follows
             # Not found → prompt for codename
-            search_button.setEnabled(False)
-            search_button.setText("Not Found")
-            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
-            codename_input.show()
-            add_button.show()
+            search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
+            search_button.setText("Not Found")                                              # changes button text to indicate failure
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")       # changes button color to red, representing invalidity
+            codename_input.show()                                                           # shows the codename input field for user to enter a codename
+            add_button.show()                                                               # shows the add button for user to click after entering codename
 
-    def Add_User(line):
+    def Add_User(line):                                                                     # now to handle actually adding the player after searching for them
         player_id = int(id_input.text())
-        codename = codename_input.text().strip()
+        codename = codename_input.text().strip()                                            # normalizes the codename input for a user mapped to their ID; removes leading/trailing whitespace
 
-        success = add_player(player_id, codename)
+        success = add_player(player_id, codename)                                           # attempts to add the player to the DB, returns True if successful, False otherwise
 
         if success:
-            engine.join_player(codename)
-            local_ui_player_list.addItem(f"{codename} ({player_id})")
+            engine.join_player(codename)                                                    # adds the player to the game engine
+            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
-            search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")       # outputs a success message, changes button color to green, and resets the UI after 1.5 seconds
             QTimer.singleShot(1500, Reset_User_UI)
         else:
             search_button.setEnabled(False)
-            search_button.setText("DB Error")
+            search_button.setText("DB Error")                                               # if unsuccessful, outputs a failure message, changes button color to red, and resets the UI after 1.5 seconds
             search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
             QTimer.singleShot(1500, Reset_User_UI)
 
 
-    def Reset_User_UI():
-        codename_input.hide()
-        add_button.hide()
-        id_input.clear()
-        codename_input.clear()
+    def Reset_User_UI():                                                                    # now we must handle resetting the UI after a search/add operation
+        codename_input.hide()                                                               # hides the codename input field
+        add_button.hide()                                                                   # hides the add button                 
+        id_input.clear()                                                                    # clears the ID input field for next input
+        codename_input.clear()                                                              # clears the codename input field for next input
         search_button.setEnabled(True)
         search_button.setText("Search")
-        search_button.setStyleSheet("background-color: #333; color: white;")
+        search_button.setStyleSheet("background-color: #333; color: white;")                # allows for searching, resets button text and color to default
 
     # --- Page layout ---
     page = QWidget()
-    page.setStyleSheet("background-color: #444444;")
+    page.setStyleSheet("background-color: #444444;")                                        # creates a page with QWidget, sets background color to dark gray, and a vertical layout
     layout = QVBoxLayout(page)
 
-    add_user_box, refs = build_form_box(
+    add_user_box, refs = build_form_box(                                                    # uses the build_form_box function to create the add user box with title and fields
         "Add Player to Game:",
         [
             {"field_placeholder": "Enter Player ID...", "button_text": "Search", "button_func": Search},
@@ -309,8 +311,8 @@ def User_Page(engine):
     )
 
     # Easier refs
-    id_input, codename_input = refs["inputs"]
-    search_button, add_button = refs["buttons"]
+    id_input, codename_input = refs["inputs"]                                               # gets references to the input fields
+    search_button, add_button = refs["buttons"]                                             # gets references to the buttons
 
     codename_input.hide()
     add_button.hide()
@@ -513,3 +515,16 @@ def Build_Team_Table(team_name, players, team_color):
     wrapper_layout.addWidget(table)
 
     return wrapper
+
+
+# need to create a game start countdown that goes from 30 ... 0 
+# this countdown will be at the top middle of the screen
+# it will appear while in the main
+
+def update_gametime(self, seconds):
+    return 0
+
+
+    
+    
+
