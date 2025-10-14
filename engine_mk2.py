@@ -74,7 +74,7 @@ class GameEngine:
         
         # Socket Setup
         self.recv_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # Receiving Socket
-        self.recv_sock.bind(("0.0.0.0", self.recv_sock))
+        self.recv_sock.bind(("0.0.0.0", self.recv_port))
         self.recv_sock.settimeout(1.0)
         
         self.send_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -283,5 +283,11 @@ class GameEngine:
     # | Thread Helper |
     def _start_thread(self, target, name: str = ""): # Helps Initialize New Threads
         th = threading.Thread(target=target, daemon=True, name=f"engine-{name}" if name else None)
-        self.threads.append(th)
+        self._threads.append(th)
         th.start() 
+    
+    def process_pending_events(self):
+        """Drain queued (attacker, target) tuples and apply to game state."""
+        while not self.event_queue.empty():
+            attacker, target = self.event_queue.get()
+            self._apply_hit(attacker, target)

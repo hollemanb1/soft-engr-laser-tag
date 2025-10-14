@@ -16,7 +16,8 @@ Why keep this separate?
 """
 
 # header.py
-import sys, json, time
+import sys, json, time, os
+from PIL import Image
 from functools import partial
 
 from PyQt5.QtWidgets import (
@@ -87,7 +88,9 @@ class ScoreboardWindow(QMainWindow):                                            
         self.setCentralWidget(self.stack)                                                   # set stack as central widget of main window, allowing for page switching
 
         # --- Build pages ---
-        self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
+        #self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
+        self.settings_page = Build_Settings_Screen(self.start_with_countdown, self.engine)
+
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
 
         # --- Add pages to stack ---
@@ -97,14 +100,14 @@ class ScoreboardWindow(QMainWindow):                                            
         # Show settings first
         self.stack.setCurrentIndex(0)
 
-    # def keyPressEvent(self, event):
-    #     if event.key() == Qt.Key_F5:
-    #         self.start_game()
-    #     # elif event.key()== Qt.Key_F12:
-    #     #     self.engine.clear_player_list()
-    #     #     print("Player List Cleared!")
-    #     else:
-    #         super().keyPressEvent(event)
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_F5:
+            self.start_game()
+        # elif event.key()== Qt.Key_F12:
+        #     self.engine.clear_player_list()
+        #     print("Player List Cleared!")
+        else:
+            super().keyPressEvent(event)
 
 
     def start_game(self):
@@ -139,6 +142,51 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def go_to_scoreboard(self):
         self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
+    def start_with_countdown(self):
+        # ensure we're on the menu page
+        self.stack.setCurrentIndex(0)
+        # find the label in the settings page once
+        self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
+        self._count = 30
+
+        # draw first frame immediately
+        self._update_countdown_label(self._count)
+
+        # tick every second
+        self._countdown_timer = QTimer(self)
+        self._countdown_timer.timeout.connect(self._tick_countdown)
+        self._countdown_timer.start(1000)
+
+    def _tick_countdown(self):
+        self._count -= 1
+        if self._count < 0:
+            # done → clear label, stop timer, start game
+            self._countdown_timer.stop()
+            if self.countdown_label:
+                self.countdown_label.clear()
+            self.start_game()
+            return
+        self._update_countdown_label(self._count)
+
+    def _update_countdown_label(self, n: int):
+        folder = "countdown_images"            # e.g., ./countdown_images/30.tif ... 0.tif
+        path = os.path.join(folder, f"{n}.tif")
+        if os.path.exists(path):
+            pix = QPixmap(path).scaled(
+                self.countdown_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.countdown_label.setPixmap(pix)
+            self.countdown_label.setText("")   # ensure no text overlay
+        else:
+            # fallback: show plain number if image missing
+            self.countdown_label.setPixmap(QPixmap())
+            self.countdown_label.setText(str(n))
+            self.countdown_label.setStyleSheet(
+                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
+            )
+
 
 
                                                                                             
@@ -445,6 +493,14 @@ def Build_Settings_Screen(start_callback, engine):
     menu.setCurrentRow(0)
 
     main_layout.addLayout(body_layout)
+    # inside Build_Settings_Screen(), after creating start_button, before adding header_layout:
+    countdown_label = QLabel(" ")
+    countdown_label.setObjectName("countdownLabel")
+    countdown_label.setFixedSize(120, 120)
+    countdown_label.setAlignment(Qt.AlignCenter)
+    countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444;")
+    header_layout.addWidget(countdown_label)
+
 
     return container
 
@@ -542,8 +598,19 @@ def Build_Team_Table(team_name, players, team_color):
 # it will appear while in the main
 # occurs after start is pressed and countdown begins
 
-def update_gametime(self, seconds):
-    return 0
+def start_countdown(self):
+    folder = "countdown_images/"  # path to your folder
+    for i in range(31):          # goes from 0 to 30
+        filename = f"{i}.tif"  # or .jpg, .jpeg, etc.
+        path = os.path.join(folder, filename)
+        if os.path.exists(path):
+            print(f"Opening {path}")
+            img = Image.open(path)
+            # do something with img (e.g., display, resize, etc.)
+        else:
+            print(f"File {path} not found.")
+
+
 
 
     
