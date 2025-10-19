@@ -6,7 +6,7 @@ Stores permanent list of players (id + codename).
 Scores/teams/hardware IDs are managed in-engine only.
 """
 
-import psycopg2
+import psycopg2, os
 
 # Adjust connection parameters to your VM setup
 DB_CONFIG = {
@@ -18,8 +18,13 @@ DB_CONFIG = {
 }
 
 
+DATABASE_URL = os.getenv("DATABASE_URL")  # e.g. postgres://user:pass@HOST:5432/photon
+
 def get_connection():
+    if DATABASE_URL:
+        return psycopg2.connect(DATABASE_URL)  # use VM DB when provided
     return psycopg2.connect(**DB_CONFIG)
+
 
 
 def init_db():
