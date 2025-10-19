@@ -29,6 +29,9 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt, QTimer
 from db_helper import search_player, add_player  # add this import
+from PyQt5.QtWidgets import QShortcut
+from PyQt5.QtGui import QKeySequence
+
 
 
 
@@ -89,7 +92,7 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # --- Build pages ---
         #self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
-        self.settings_page = Build_Settings_Screen(self.start_with_countdown, self.engine)
+        self.settings_page = Build_Settings_Screen(self.start_game_with_countdown_on_scoreboard, self.engine)
 
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
 
@@ -99,13 +102,16 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # Show settings first
         self.stack.setCurrentIndex(0)
+        QShortcut(QKeySequence(Qt.Key_F5), self,
+          activated=self.start_game_with_countdown_on_scoreboard)
+
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F5:
             self.start_game()
-        # elif event.key()== Qt.Key_F12:
-        #     self.engine.clear_player_list()
-        #     print("Player List Cleared!")
+        elif event.key()== Qt.Key_F12:
+            self.engine.clear_player_list()
+            print("Player List Cleared!")
         else:
             super().keyPressEvent(event)
 
@@ -186,10 +192,65 @@ class ScoreboardWindow(QMainWindow):                                            
             self.countdown_label.setStyleSheet(
                 "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
             )
+    def start_game_with_countdown_on_scoreboard(self):
+        """Switch to scoreboard, show countdown there, then start game when it hits 0."""
+        # ensure scoreboard is visible
+        self.stack.setCurrentIndex(1)
+
+        # find the scoreboard countdown label
+        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
+        if not self.countdown_label:
+            # fallback: rebuild scoreboard to ensure the label exists
+            self.refresh_scoreboard()
+            self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
+
+        # init counter
+        self._count = 30
+        self._update_scoreboard_countdown(self._count)
+
+        # kick timer
+        self._countdown_timer = QTimer(self)
+        self._countdown_timer.timeout.connect(self._tick_scoreboard_countdown)
+        self._countdown_timer.start(1000)
+
+    def _tick_scoreboard_countdown(self):
+        self._count -= 1
+        if self._count < 0:
+            # done → clear label, stop timer, start the game & polling
+            self._countdown_timer.stop()
+            if self.countdown_label:
+                self.countdown_label.clear()
+            # now start the game and the poller
+            self.engine.start_game()
+            self.stack.setCurrentIndex(1)  # stay on scoreboard
+            self.poll_timer = QTimer(self)
+            self.poll_timer.timeout.connect(self._poll_events)
+            self.poll_timer.start(200)
+            return
+        self._update_scoreboard_countdown(self._count)
+
+    def _update_scoreboard_countdown(self, n: int):
+        """Draw the countdown frame on the scoreboard label (image if present, else text)."""
+        if not self.countdown_label:
+            return
+        folder = "countdown_images"
+        path = os.path.join(folder, f"{n}.tif")
+        if os.path.exists(path):
+            pix = QPixmap(path).scaled(
+                self.countdown_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            )
+            self.countdown_label.setPixmap(pix)
+            self.countdown_label.setText("")
+        else:
+            self.countdown_label.setPixmap(QPixmap())
+            self.countdown_label.setText(str(n))
+            self.countdown_label.setStyleSheet(
+                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
+            )
 
 
-
-                                                                                            
 
 
 # Simply used for showing the splash screen
@@ -204,51 +265,6 @@ def Start_App(app, window):
     # after 5 seconds, close splash and show main window
     QTimer.singleShot(2000, lambda: (splash.close(), window.show()))                        # after 2 seconds, close splash and show main window, yay!
 
-# ----- End Constructors -----
-
-
-
-
-
-
-#######################################################################################
-############################ BUILDER FUNCTIONS ########################################
-#######################################################################################
-#
-#   In a Multi-window Qt app, the paradigm is to have builder functions
-#     that you call from main, and when you need to switch windows, you
-#     call a switcher function to change which page you display. These
-#     functions below are builders, and they return a container to the
-#     main window. That way everything is basically built and boxed up
-#     right before main gets it
-#
-
-
-
-
-
-###############################
-######## SETTINGS PAGE ########
-###############################
-
-##### Box Setup #####
-# Allows me to make multiple fields in the settings menu,
-#   and not have to continually remake them over and over
-  #
-  #   Args:
-  #       box_title (str): Title at the top of the box.
-  #       fields (list of dict): Each dict defines one row:
-  #           {
-  #               "field_placeholder": str,
-  #               "button_text": str,
-  #               "button_func": callable   # takes input_text as arg
-  #           }
-  #
-  #   Returns:
-  #       (QWidget, dict):
-  #           - The QWidget containing the whole box
-  #           - A dict of { "inputs": [QLineEdit...], "buttons": [QPushButton...] }
-                                                                                            # notes:
 
 def build_form_box(box_title, fields):                                                      # builds a form box with a title and multiple fields                     
     box = QWidget()
@@ -295,7 +311,7 @@ def build_form_box(box_title, fields):                                          
 def User_Page(start_callback, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_F5:
-            start_callback()
+            self.start_game_with_countdown_on_scoreboard()
         elif event.key()== Qt.Key_F12:
             engine.clear_player_list()
             local_ui_player_list.clear()
@@ -494,12 +510,12 @@ def Build_Settings_Screen(start_callback, engine):
 
     main_layout.addLayout(body_layout)
     # inside Build_Settings_Screen(), after creating start_button, before adding header_layout:
-    countdown_label = QLabel(" ")
-    countdown_label.setObjectName("countdownLabel")
-    countdown_label.setFixedSize(120, 120)
-    countdown_label.setAlignment(Qt.AlignCenter)
-    countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444;")
-    header_layout.addWidget(countdown_label)
+    # countdown_label = QLabel(" ")
+    # countdown_label.setObjectName("countdownLabel")
+    # countdown_label.setFixedSize(120, 120)
+    # countdown_label.setAlignment(Qt.AlignCenter)
+    # countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444;")
+    # header_layout.addWidget(countdown_label)
 
 
     return container
@@ -512,30 +528,73 @@ def Build_Settings_Screen(start_callback, engine):
 #################################
 
 ##### Scoreboard Builder #####
-def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
+# def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
 
+#     container = QWidget()
+#     container.setStyleSheet("background-color: #222;")
+#     h_layout = QHBoxLayout(container)
+
+#     red_team = red_team or []
+#     green_team = green_team or []
+
+#     # Left: stacked scoreboards
+#     left_layout = QVBoxLayout()
+#     left_layout.setSpacing(20)
+#     left_layout.addWidget(Build_Team_Table("Red Team", red_team, "#cc0000"))
+#     left_layout.addWidget(Build_Team_Table("Green Team", green_team, "#00cc00"))
+#     h_layout.addLayout(left_layout)
+
+#     # Right: message box
+#     message_box = QTextEdit()
+#     message_box.setReadOnly(True)
+#     message_box.setPlaceholderText("Game messages will appear here...")
+#     message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
+#     h_layout.addWidget(message_box)
+
+#     return container
+def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     container = QWidget()
     container.setStyleSheet("background-color: #222;")
-    h_layout = QHBoxLayout(container)
 
+    # MAIN layout now vertical: header (countdown) on top, then the two-column body
+    v_layout = QVBoxLayout(container)
+    v_layout.setSpacing(10)
+
+    # --- Header: centered countdown label ---
+    header = QHBoxLayout()
+    header.setContentsMargins(0, 0, 0, 0)
+    header.addStretch()
+    countdown_label = QLabel(" ")
+    countdown_label.setObjectName("countdownLabelScore")     # <-- we’ll find this later
+    countdown_label.setFixedSize(160, 160)
+    countdown_label.setAlignment(Qt.AlignCenter)
+    countdown_label.setStyleSheet("background: transparent; border: none;")
+    countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
+    header.addWidget(countdown_label)
+    header.addStretch()
+    v_layout.addLayout(header)
+
+    # --- Body: existing two-team tables (left) + message box (right) ---
+    h_layout = QHBoxLayout()
     red_team = red_team or []
     green_team = green_team or []
 
-    # Left: stacked scoreboards
     left_layout = QVBoxLayout()
     left_layout.setSpacing(20)
     left_layout.addWidget(Build_Team_Table("Red Team", red_team, "#cc0000"))
     left_layout.addWidget(Build_Team_Table("Green Team", green_team, "#00cc00"))
     h_layout.addLayout(left_layout)
 
-    # Right: message box
     message_box = QTextEdit()
     message_box.setReadOnly(True)
     message_box.setPlaceholderText("Game messages will appear here...")
     message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
     h_layout.addWidget(message_box)
 
+    v_layout.addLayout(h_layout)
+
     return container
+
 
 
 

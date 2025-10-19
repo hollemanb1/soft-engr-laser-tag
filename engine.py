@@ -132,7 +132,7 @@ class GameEngine:
 
     def process_pending_events(self):
         """Drain queued (attacker, target) tuples and apply to game state."""
-        while not self.event_queue.empty():
+        while not self.event_queupythone.empty():
             attacker, target = self.event_queue.get()
             self._apply_hit(attacker, target)
 

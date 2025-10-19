@@ -12,9 +12,9 @@ import psycopg2
 DB_CONFIG = {
     "dbname": "photon",
     "user": "student",
-    # "password": "student",  # add if required
-    # "host": "localhost",
-    # "port": 5432,
+    "password": "student",  # add if required
+    "host": "127.0.0.1",
+    "port": 5432,
 }
 
 

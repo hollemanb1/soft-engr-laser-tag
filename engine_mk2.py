@@ -95,6 +95,10 @@ class GameEngine:
         """Sends Stop Codes, halts threads, closes sockets"""
         if not self.running:
             return
+
+        for _ in range(3):
+            self.send_code("221")
+            time.sleep(0.05)
         
         # Turn running marker off
         self.running = False
@@ -105,10 +109,9 @@ class GameEngine:
         # Close Sockets
         try:
             if self.recv_sock:
-                self.recv_sock.accept
+                self.recv_sock.close()
         finally:
             self.recv_sock = None
-            
         try:
             if self.send_sock:
                 self.send_sock.close()
@@ -235,6 +238,7 @@ class GameEngine:
                 
                 if attacker and target:
                     self.event_queue.put((attacker, target)) #If receives a valid attacker and target, send message
+                    self.send_text("Acknowledged") # Acknowledge Receipt of Valid Packet
                 else:
                     self.send_text("ERR: bad-format") #Error Message: Incorrect Format for message (missing target, missing attacker, extra info, etc...)
                     print(f"[engine] Bad packet (ignored): {msg}")
@@ -249,12 +253,16 @@ class GameEngine:
                 
     def _send_loop(self):
         """Takes data from send queue and transmits strings to generator through ip and send port"""
+        address  = (self.ip, self.send_port)
         while self.running or not self.send_queue.empty():
             try:
                 msg = self.send_queue.get(timeout=0.5)
                 line = msg if isinstance(msg, str) else str(msg)
             except queue.Empty:
                 continue
+            try:
+                line = msg if isinstance(msg, str) else str(msg)
+                self.send_sock.sendto(line.encode("utf-8", errors="ignore"), address)
             except OSError:
                 break
             except Exception as e:
