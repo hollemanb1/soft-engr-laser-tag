@@ -129,19 +129,53 @@ class ScoreboardWindow(QMainWindow):                                            
         self.engine.process_pending_events()                                                # process any pending events in the engine
         self.refresh_scoreboard()                                                           # refresh scoreboard to display accurate data
 
+    # def refresh_scoreboard(self):
+    #     players = list(self.engine.players.values())                                        # refreshing scoreboard starts by creating a list of all players in the game
+
+    #     red_team = players[:len(players)//2]                                                # red team becomes the first half of the players list
+    #     green_team = players[len(players)//2:]                                              # green team becomes the second half of the players list
+
+    #     # clear old scoreboard_page and rebuild
+    #     self.stack.removeWidget(self.stack.widget(1))                                       # remove old scoreboard page from stack,
+
+    #     # Rebuild scoreboard with current teams
+    #     self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings, red_team, green_team)   # rebuild scoreboard page with current teams
+    #     self.stack.addWidget(self.scoreboard_page)                                          # add new scoreboard page to stack
+    #     self.stack.setCurrentIndex(1)                                                       # set current index to 1 to show the scoreboard page
+    
     def refresh_scoreboard(self):
-        players = list(self.engine.players.values())                                        # refreshing scoreboard starts by creating a list of all players in the game
+        players = list(self.engine.players.values())
 
-        red_team = players[:len(players)//2]                                                # red team becomes the first half of the players list
-        green_team = players[len(players)//2:]                                              # green team becomes the second half of the players list
+        # TODO: replace this split with your real team logic if you have one
+        mid = len(players) // 2
+        red_team = players[:mid]
+        green_team = players[mid:]
 
-        # clear old scoreboard_page and rebuild
-        self.stack.removeWidget(self.stack.widget(1))                                       # remove old scoreboard page from stack,
+        red_table   = self.scoreboard_page.findChild(QTableWidget, "table_red")
+        green_table = self.scoreboard_page.findChild(QTableWidget, "table_green")
+        red_total   = self.scoreboard_page.findChild(QLabel, "total_red")
+        green_total = self.scoreboard_page.findChild(QLabel, "total_green")
 
-        # Rebuild scoreboard with current teams
-        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings, red_team, green_team)   # rebuild scoreboard page with current teams
-        self.stack.addWidget(self.scoreboard_page)                                          # add new scoreboard page to stack
-        self.stack.setCurrentIndex(1)                                                       # set current index to 1 to show the scoreboard page
+        self._populate_team_table(red_table, red_team)
+        self._populate_team_table(green_table, green_team)
+
+        if red_total:
+            red_total.setText(str(sum(p.score for p in red_team)))
+        if green_total:
+            green_total.setText(str(sum(p.score for p in green_team)))
+
+    def _populate_team_table(self, table, team):
+        if table is None:
+            return
+        table.setRowCount(len(team))
+        for row, p in enumerate(team):
+            name_item  = QTableWidgetItem(" " + p.username)
+            score_item = QTableWidgetItem(str(p.score))
+            name_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
+            score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            table.setItem(row, 0, name_item)
+            table.setItem(row, 1, score_item)
+
 
     def go_to_settings(self):
         self.stack.setCurrentIndex(0)                                                       # traversal: switch to settings page
@@ -193,22 +227,25 @@ class ScoreboardWindow(QMainWindow):                                            
                 "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
             )
     def start_game_with_countdown_on_scoreboard(self):
-        """Switch to scoreboard, show countdown there, then start game when it hits 0."""
-        # ensure scoreboard is visible
         self.stack.setCurrentIndex(1)
 
-        # find the scoreboard countdown label
+        # start polling NOW (if not already running)
+        if not hasattr(self, "poll_timer") or self.poll_timer is None:
+            self.poll_timer = QTimer(self)
+            self.poll_timer.timeout.connect(self._poll_events)
+            self.poll_timer.start(200)
+
+        # make sure first frame shows current players
+        self.refresh_scoreboard()
+
         self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
         if not self.countdown_label:
-            # fallback: rebuild scoreboard to ensure the label exists
-            self.refresh_scoreboard()
-            self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
+            # no rebuilds — refresh_scoreboard no longer destroys widgets (see §2)
+            pass
 
-        # init counter
         self._count = 30
         self._update_scoreboard_countdown(self._count)
 
-        # kick timer
         self._countdown_timer = QTimer(self)
         self._countdown_timer.timeout.connect(self._tick_scoreboard_countdown)
         self._countdown_timer.start(1000)
@@ -216,18 +253,14 @@ class ScoreboardWindow(QMainWindow):                                            
     def _tick_scoreboard_countdown(self):
         self._count -= 1
         if self._count < 0:
-            # done → clear label, stop timer, start the game & polling
             self._countdown_timer.stop()
             if self.countdown_label:
                 self.countdown_label.clear()
-            # now start the game and the poller
             self.engine.start_game()
-            self.stack.setCurrentIndex(1)  # stay on scoreboard
-            self.poll_timer = QTimer(self)
-            self.poll_timer.timeout.connect(self._poll_events)
-            self.poll_timer.start(200)
+            self.stack.setCurrentIndex(1)
             return
         self._update_scoreboard_countdown(self._count)
+
 
     def _update_scoreboard_countdown(self, n: int):
         """Draw the countdown frame on the scoreboard label (image if present, else text)."""
@@ -601,7 +634,10 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
 ##### TEAM TABLE BUILDER #####
 def Build_Team_Table(team_name, players, team_color):
     table = QTableWidget(len(players), 2)
+    key = team_name.lower().split()[0]                                  # "Red Team" -> "red" or "Green Team" -> "green"
     table.setEditTriggers(QTableWidget.NoEditTriggers)
+    table.setObjectName(f"table_{key}")
+
     table.verticalHeader().setVisible(False)
     table.horizontalHeader().setVisible(False)
     table.setShowGrid(False)
@@ -634,6 +670,8 @@ def Build_Team_Table(team_name, players, team_color):
     header_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
     total_label = QLabel(str(sum(p.score for p in players)))
+    total_label.setObjectName(f"total_{key}")
+
     total_label.setStyleSheet(
         f"background-color: {team_color}; color: white; "
         "font-size: 16px; padding: 4px; border-top-right-radius: 2px; border-bottom-right-radius: 2px;"
