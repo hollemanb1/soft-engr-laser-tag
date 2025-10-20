@@ -133,10 +133,12 @@ class GameEngine:
         # Add new player to Player List
         if hw_id not in self.players:
             self.players[hw_id] = Player(hw_id, username, team)
-            print(f"[engine] Player joined: {username} ({hw_id}) [{team}]")
+            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
+            self.send_queue.put(temp_string)
         else:
             # If collision (unlikely), regenrate player
-            print(f"[engine] Player joined: {username} ({hw_id}) [{team}]")
+            temp_string f"Player joined: {username} ({hw_id}) [{team}]"
+            self.send_queue.put(temp_string)
             return self.join_player(username)
         
         # Register Broadcast
