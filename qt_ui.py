@@ -320,10 +320,10 @@ class ScoreboardWindow(QMainWindow):                                            
 # Simply used for showing the splash screen
 def Start_App(app, window):
     splash = QLabel()                                                                       # splash screen is a QLabel; it will display an image
-    pixmap = QPixmap("logo.jpg").scaled(360, 229, Qt.KeepAspectRatioByExpanding)            # load and scale the image to fit the splash screen size
+    pixmap = QPixmap("logo.jpg").scaled(720, 458, Qt.KeepAspectRatioByExpanding)            # load and scale the image to fit the splash screen size
     splash.setPixmap(pixmap)                                                                # set the loaded image to the scaled splash QLabel
     splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)                         # set window flags to make it a splash screen and frameless   
-    splash.setFixedSize(360, 229)                                                           # set fixed size for the splash screen
+    splash.setFixedSize(720, 458)                                                           # set fixed size for the splash screen
     splash.show()                                                                           # make the splash screen visible
 
     # after 5 seconds, close splash and show main window
