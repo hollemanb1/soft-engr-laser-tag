@@ -137,7 +137,7 @@ class GameEngine:
             self.send_queue.put(temp_string)
         else:
             # If collision (unlikely), regenrate player
-            temp_string f"Player joined: {username} ({hw_id}) [{team}]"
+            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
             self.send_queue.put(temp_string)
             return self.join_player(username)
         
