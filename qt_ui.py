@@ -17,7 +17,7 @@ Why keep this separate?
 
 # header.py
 import sys, json, time, os
-from PIL import Image
+from PIL import ImageQt, Image
 from functools import partial
 
 from PyQt5.QtWidgets import (
@@ -26,11 +26,27 @@ from PyQt5.QtWidgets import (
     QListWidget, QStackedWidget, QLineEdit, QApplication,
     QMainWindow, QSizePolicy
 )
-from PyQt5.QtGui import QPixmap, QFont
+from PyQt5.QtGui import QPixmap, QFont, QImage
 from PyQt5.QtCore import Qt, QTimer
 from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
 from PyQt5.QtGui import QKeySequence
+
+
+def load_pix_safe(path: str) -> QPixmap | None:
+    pm = QPixmap(path)
+    if not pm.isNull():
+        return pm
+    try:
+        img = Image.open(path)               # needs 'from PIL import Image'
+        qimg = ImageQt.ImageQt(img)          # qimg is already a QImage
+        pm = QPixmap.fromImage(qimg)
+        if not pm.isNull():
+            return pm
+    except Exception as e:
+        print(f"[WARN] load_pix_safe failed for {path}: {e}")
+    return None
+
 
 
 
@@ -82,6 +98,8 @@ class ScoreboardWindow(QMainWindow):                                            
     def __init__(self, engine):
         super().__init__()
 
+        self.in_countdown = False
+
         self.engine = engine                                                                # set engine reference for later usage
 
         self.setWindowTitle("Game Launcher")                                                # window title
@@ -102,18 +120,23 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # Show settings first
         self.stack.setCurrentIndex(0)
-        QShortcut(QKeySequence(Qt.Key_F5), self,
-          activated=self.start_game_with_countdown_on_scoreboard)
 
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_F5:
-            self.start_game()
-        elif event.key()== Qt.Key_F12:
-            self.engine.clear_player_list()
-            print("Player List Cleared!")
-        else:
-            super().keyPressEvent(event)
+        if self.stack.currentWidget() is self.settings_page:
+            if event.key() == Qt.Key_F5:
+                self.start_game_with_countdown_on_scoreboard()
+                return
+            elif event.key() == Qt.Key_F12:
+                self.engine.clear_player_list()
+                # also clear the visible list in Settings UI
+                lst = self.settings_page.findChild(QListWidget, "local_ui_player_list")
+                if lst:
+                    lst.clear()
+                print("Player List Cleared!")
+                return
+        super().keyPressEvent(event)
+
 
 
     def start_game(self):
@@ -145,6 +168,7 @@ class ScoreboardWindow(QMainWindow):                                            
     
     def refresh_scoreboard(self):
         players = list(self.engine.players.values())
+        #print("[UI] refresh_scoreboard: players =", [p.username for p in players])  # <--
 
         # TODO: replace this split with your real team logic if you have one
         mid = len(players) // 2
@@ -209,18 +233,37 @@ class ScoreboardWindow(QMainWindow):                                            
         self._update_countdown_label(self._count)
 
     def _update_countdown_label(self, n: int):
-        folder = "countdown_images"            # e.g., ./countdown_images/30.tif ... 0.tif
-        path = os.path.join(folder, f"{n}.tif")
-        if os.path.exists(path):
-            pix = QPixmap(path).scaled(
+        folder = "countdown_images"
+        path = os.path.join(folder, f"{n}.tif")  # keep your .tif if you want
+        pm = load_pix_safe(path) if os.path.exists(path) else None
+        if pm:
+            self.countdown_label.setPixmap(pm.scaled(
                 self.countdown_label.size(),
                 Qt.KeepAspectRatio,
                 Qt.SmoothTransformation
-            )
-            self.countdown_label.setPixmap(pix)
-            self.countdown_label.setText("")   # ensure no text overlay
+            ))
+            self.countdown_label.setText("")
         else:
-            # fallback: show plain number if image missing
+            self.countdown_label.setPixmap(QPixmap())
+            self.countdown_label.setText(str(n))
+            self.countdown_label.setStyleSheet(
+                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
+            )
+
+    def _update_scoreboard_countdown(self, n: int):
+        if not self.countdown_label:
+            return
+        folder = "countdown_images"
+        path = os.path.join(folder, f"{n}.tif")
+        pm = load_pix_safe(path) if os.path.exists(path) else None
+        if pm:
+            self.countdown_label.setPixmap(pm.scaled(
+                self.countdown_label.size(),
+                Qt.KeepAspectRatio,
+                Qt.SmoothTransformation
+            ))
+            self.countdown_label.setText("")
+        else:
             self.countdown_label.setPixmap(QPixmap())
             self.countdown_label.setText(str(n))
             self.countdown_label.setStyleSheet(
@@ -229,26 +272,22 @@ class ScoreboardWindow(QMainWindow):                                            
     def start_game_with_countdown_on_scoreboard(self):
         self.stack.setCurrentIndex(1)
 
-        # start polling NOW (if not already running)
         if not hasattr(self, "poll_timer") or self.poll_timer is None:
             self.poll_timer = QTimer(self)
             self.poll_timer.timeout.connect(self._poll_events)
             self.poll_timer.start(200)
 
-        # make sure first frame shows current players
-        self.refresh_scoreboard()
+        self.refresh_scoreboard()        # <--- draw current players NOW
 
+        self.in_countdown = True
         self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
-        if not self.countdown_label:
-            # no rebuilds — refresh_scoreboard no longer destroys widgets (see §2)
-            pass
-
         self._count = 30
         self._update_scoreboard_countdown(self._count)
 
         self._countdown_timer = QTimer(self)
         self._countdown_timer.timeout.connect(self._tick_scoreboard_countdown)
         self._countdown_timer.start(1000)
+
 
     def _tick_scoreboard_countdown(self):
         self._count -= 1
@@ -257,31 +296,20 @@ class ScoreboardWindow(QMainWindow):                                            
             if self.countdown_label:
                 self.countdown_label.clear()
             self.engine.start_game()
+            self.in_countdown = False          # resumes UI refresh
             self.stack.setCurrentIndex(1)
+            self.refresh_scoreboard()          # first reveal after GO
             return
         self._update_scoreboard_countdown(self._count)
 
+    def _poll_events(self):
+        self.engine.process_pending_events()
+        self.refresh_scoreboard()    # <--- remove the in_countdown check
 
-    def _update_scoreboard_countdown(self, n: int):
-        """Draw the countdown frame on the scoreboard label (image if present, else text)."""
-        if not self.countdown_label:
-            return
-        folder = "countdown_images"
-        path = os.path.join(folder, f"{n}.tif")
-        if os.path.exists(path):
-            pix = QPixmap(path).scaled(
-                self.countdown_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            )
-            self.countdown_label.setPixmap(pix)
-            self.countdown_label.setText("")
-        else:
-            self.countdown_label.setPixmap(QPixmap())
-            self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet(
-                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
-            )
+
+
+
+
 
 
 
@@ -342,16 +370,10 @@ def build_form_box(box_title, fields):                                          
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
 def User_Page(start_callback, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_F5:
-            self.start_game_with_countdown_on_scoreboard()
-        elif event.key()== Qt.Key_F12:
-            engine.clear_player_list()
-            local_ui_player_list.clear()
-            print("Player List Cleared!")
-        else:
-            super().keyPressEvent(event)
-    
+    local_ui_player_list = QListWidget()
+    local_ui_player_list.setObjectName("local_ui_player_list")   
+    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
+
     def Search(line):           
         """Search for a player by ID and add them to the engine if found."""
         try:
@@ -433,10 +455,6 @@ def User_Page(start_callback, engine):                                          
 
     codename_input.hide()
     add_button.hide()
-
-    # --- Local player list widget ---
-    local_ui_player_list = QListWidget()
-    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
 
     # Container for the "Players:" title + text box
     player_header = QWidget()
