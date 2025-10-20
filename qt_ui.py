@@ -30,22 +30,25 @@ from PyQt5.QtGui import QPixmap, QFont, QImage
 from PyQt5.QtCore import Qt, QTimer
 from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
-from PyQt5.QtGui import QKeySequence
+from PyQt5.QtGui import QKeySequence, QPixmap
 
 
-def load_pix_safe(path: str) -> QPixmap | None:
+# at top of file:
+def load_pix_safe(path: str):
     pm = QPixmap(path)
     if not pm.isNull():
         return pm
     try:
-        img = Image.open(path)               # needs 'from PIL import Image'
-        qimg = ImageQt.ImageQt(img)          # qimg is already a QImage
+        from PIL import ImageQt, Image
+        img = Image.open(path)
+        qimg = ImageQt.ImageQt(img)
         pm = QPixmap.fromImage(qimg)
         if not pm.isNull():
             return pm
     except Exception as e:
         print(f"[WARN] load_pix_safe failed for {path}: {e}")
     return None
+
 
 
 
