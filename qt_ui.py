@@ -32,6 +32,8 @@ from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
 from PyQt5.QtGui import QKeySequence, QPixmap
 
+# import pygame
+
 
 # at top of file:
 def load_pix_safe(path: str):
@@ -49,7 +51,12 @@ def load_pix_safe(path: str):
         print(f"[WARN] load_pix_safe failed for {path}: {e}")
     return None
 
-
+# # | Music Initialization |
+# pygame.init()
+# pygame.mixer.init()
+# mp3_file = "audio_tracks/Track03.mp3"
+# pygame.mixer.music.load(mp3_file)
+# pygame.mixer.music.set_volume(1)
 
 
 
@@ -212,6 +219,10 @@ class ScoreboardWindow(QMainWindow):                                            
     def start_with_countdown(self):
         # ensure we're on the menu page
         self.stack.setCurrentIndex(0)
+        
+        # Start Music
+        self.engine.start_music()
+        
         # find the label in the settings page once
         self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
         self._count = 30

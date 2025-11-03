@@ -39,6 +39,16 @@ class Player:
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
         
+# | Music Engine |
+pygame.init()
+pygame.mixer.init()
+mp3_file = "audio_tracks/Track03.mp3"
+pygame.mixer.music.load(mp3_file)
+pygame.mixer.music.set_volume(1)
+
+def start_music():
+    pygame.mixer.music.play()
+        
 # | Main Game Engine |
 class GameEngine:
     def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=300): #Initialized Values for Game Settings (Should NOT Change)
@@ -67,11 +77,11 @@ class GameEngine:
         print(f"[engine] send target ip =  {self.ip}")
         
     # Music Initialization
-    pygame.init()
-    pygame.mixer.init()
-    mp3_file = r"C:\Users\holle\OneDrive\Desktop\VSCode\Software Engineering\soft-engr-laser-tag\audio_tracks\Track01.mp3"
-    pygame.mixer.music.load(mp3_file)
-    pygame.mixer.music.set_volume(1)
+    # pygame.init()
+    # pygame.mixer.init()
+    # mp3_file = "audio_tracks/Track03.mp3"
+    # pygame.mixer.music.load(mp3_file)
+    # pygame.mixer.music.set_volume(1)
         
     # | Public API |
     def start_game(self):
@@ -96,7 +106,7 @@ class GameEngine:
         # Start Thread (On own delayed thread so UI not blocked)
         self._start_thread(self._delayed_start_code, name="start_code")
         
-        pygame.mixer.music.play()
+        # pygame.mixer.music.play()
         
         print("[engine] Game Started!")
     
