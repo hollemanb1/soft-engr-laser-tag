@@ -42,7 +42,7 @@ class Player:
 # | Music Engine |
 pygame.init()
 pygame.mixer.init()
-mp3_file = "audio_tracks/Track03.mp3"
+mp3_file = "Photon_Audio.mp3"
 pygame.mixer.music.load(mp3_file)
 pygame.mixer.music.set_volume(1)
         
