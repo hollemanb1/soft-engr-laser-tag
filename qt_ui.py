@@ -32,7 +32,7 @@ from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
 from PyQt5.QtGui import QKeySequence, QPixmap
 
-# import pygame
+
 
 
 # at top of file:
@@ -50,15 +50,6 @@ def load_pix_safe(path: str):
     except Exception as e:
         print(f"[WARN] load_pix_safe failed for {path}: {e}")
     return None
-
-# # | Music Initialization |
-# pygame.init()
-# pygame.mixer.init()
-# mp3_file = "audio_tracks/Track03.mp3"
-# pygame.mixer.music.load(mp3_file)
-# pygame.mixer.music.set_volume(1)
-
-
 
 
 
@@ -282,9 +273,6 @@ class ScoreboardWindow(QMainWindow):                                            
             )
     def start_game_with_countdown_on_scoreboard(self):
         self.stack.setCurrentIndex(1)
-        
-        # Start Music
-        self.engine.start_music()
 
         if not hasattr(self, "poll_timer") or self.poll_timer is None:
             self.poll_timer = QTimer(self)
@@ -296,6 +284,7 @@ class ScoreboardWindow(QMainWindow):                                            
         self.in_countdown = True
         self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
         self._count = 30
+            
         self._update_scoreboard_countdown(self._count)
 
         self._countdown_timer = QTimer(self)
@@ -305,6 +294,11 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def _tick_scoreboard_countdown(self):
         self._count -= 1
+        
+        # Start Music at 17 (For timing purposes)
+        if self._count == 17:
+            self.engine.start_music()
+            
         if self._count < 0:
             self._countdown_timer.stop()
             if self.countdown_label:

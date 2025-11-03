@@ -45,9 +45,6 @@ pygame.mixer.init()
 mp3_file = "audio_tracks/Track03.mp3"
 pygame.mixer.music.load(mp3_file)
 pygame.mixer.music.set_volume(1)
-
-def start_music():
-    pygame.mixer.music.play()
         
 # | Main Game Engine |
 class GameEngine:
@@ -71,6 +68,8 @@ class GameEngine:
         
         self._threads: list[threading.Thread] = [] # Threads if desired
         
+    def start_music(self):
+        pygame.mixer.music.play()    
     # Function to Change the Target IP for outgoing messages (before game start)
     def change_ip(self, new_ip: str):
         self.ip = new_ip
