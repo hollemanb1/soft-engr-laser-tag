@@ -76,13 +76,6 @@ class GameEngine:
         self.ip = new_ip
         print(f"[engine] send target ip =  {self.ip}")
         
-    # Music Initialization
-    # pygame.init()
-    # pygame.mixer.init()
-    # mp3_file = "audio_tracks/Track03.mp3"
-    # pygame.mixer.music.load(mp3_file)
-    # pygame.mixer.music.set_volume(1)
-        
     # | Public API |
     def start_game(self):
         """Start the Network and Game timer, wait 3 seconds --> send Start Code '202'"""

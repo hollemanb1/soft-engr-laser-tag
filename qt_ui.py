@@ -220,9 +220,6 @@ class ScoreboardWindow(QMainWindow):                                            
         # ensure we're on the menu page
         self.stack.setCurrentIndex(0)
         
-        # Start Music
-        self.engine.start_music()
-        
         # find the label in the settings page once
         self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
         self._count = 30
@@ -285,6 +282,9 @@ class ScoreboardWindow(QMainWindow):                                            
             )
     def start_game_with_countdown_on_scoreboard(self):
         self.stack.setCurrentIndex(1)
+        
+        # Start Music
+        self.engine.start_music()
 
         if not hasattr(self, "poll_timer") or self.poll_timer is None:
             self.poll_timer = QTimer(self)
