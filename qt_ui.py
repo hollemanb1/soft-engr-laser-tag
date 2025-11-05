@@ -114,7 +114,9 @@ class ScoreboardWindow(QMainWindow):                                            
         self.settings_page = Build_Settings_Screen(self.start_game_with_countdown_on_scoreboard, self.engine)
 
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
-
+        self.game_timer = None
+        self.game_seconds = 0
+        self.game_clock_label = None
         # --- Add pages to stack ---
         self.stack.addWidget(self.settings_page)                                            # index 0
         self.stack.addWidget(self.scoreboard_page)                                          # index 1
@@ -139,7 +141,6 @@ class ScoreboardWindow(QMainWindow):                                            
         super().keyPressEvent(event)
 
 
-
     def start_game(self):
         self.engine.start_game()
         self.stack.setCurrentIndex(1)
@@ -152,20 +153,7 @@ class ScoreboardWindow(QMainWindow):                                            
     def _poll_events(self):
         self.engine.process_pending_events()                                                # process any pending events in the engine
         self.refresh_scoreboard()                                                           # refresh scoreboard to display accurate data
-
-    # def refresh_scoreboard(self):
-    #     players = list(self.engine.players.values())                                        # refreshing scoreboard starts by creating a list of all players in the game
-
-    #     red_team = players[:len(players)//2]                                                # red team becomes the first half of the players list
-    #     green_team = players[len(players)//2:]                                              # green team becomes the second half of the players list
-
-    #     # clear old scoreboard_page and rebuild
-    #     self.stack.removeWidget(self.stack.widget(1))                                       # remove old scoreboard page from stack,
-
-    #     # Rebuild scoreboard with current teams
-    #     self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings, red_team, green_team)   # rebuild scoreboard page with current teams
-    #     self.stack.addWidget(self.scoreboard_page)                                          # add new scoreboard page to stack
-    #     self.stack.setCurrentIndex(1)                                                       # set current index to 1 to show the scoreboard page
+                                                # set current index to 1 to show the scoreboard page
     
     def refresh_scoreboard(self):
         players = list(self.engine.players.values())
@@ -207,6 +195,30 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def go_to_scoreboard(self):
         self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
+
+
+
+#------------------------------------------------------------------------------#
+    # Countdown functionality
+    
+    # need to create a game start countdown that goes from 30 ... 0 
+    # this countdown will be at the top middle of the screen
+    # it will appear while in the main
+    # occurs after start is pressed and countdown begins
+
+    def start_countdown(self):
+        folder = "countdown_images/"  # path to your folder
+        for i in range(31):          # goes from 0 to 30
+            filename = f"{i}.tif"  # or .jpg, .jpeg, etc.
+            path = os.path.join(folder, filename)
+            if os.path.exists(path):
+                print(f"Opening {path}")
+                img = Image.open(path)
+                # do something with img (e.g., display, resize, etc.)
+            else:
+                print(f"File {path} not found.")
+
+        
     def start_with_countdown(self):
         # ensure we're on the menu page
         self.stack.setCurrentIndex(0)
@@ -248,9 +260,7 @@ class ScoreboardWindow(QMainWindow):                                            
         else:
             self.countdown_label.setPixmap(QPixmap())
             self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet(
-                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
-            )
+            self.countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;")
 
     def _update_scoreboard_countdown(self, n: int):
         if not self.countdown_label:
@@ -268,9 +278,8 @@ class ScoreboardWindow(QMainWindow):                                            
         else:
             self.countdown_label.setPixmap(QPixmap())
             self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet(
-                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
-            )
+            self.countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;")
+
     def start_game_with_countdown_on_scoreboard(self):
         self.stack.setCurrentIndex(1)
 
@@ -306,7 +315,9 @@ class ScoreboardWindow(QMainWindow):                                            
             self.engine.start_game()
             self.in_countdown = False          # resumes UI refresh
             self.stack.setCurrentIndex(1)
-            self.refresh_scoreboard()          # first reveal after GO
+
+            self.start_game_clock(360)
+            self.refresh_scoreboard()
             return
         self._update_scoreboard_countdown(self._count)
 
@@ -316,11 +327,39 @@ class ScoreboardWindow(QMainWindow):                                            
 
 
 
+    def start_game_clock(self, seconds: int = 360):
+        self.game_seconds = max(0, seconds)
+        # pick up the label each time in case the page was rebuilt
+        self.game_clock_label = self.scoreboard_page.findChild(QLabel, "gameClockLabel")
+        self._update_game_clock_label()
 
+        # stop any prior timer
+        if hasattr(self, "game_timer") and self.game_timer:
+            self.game_timer.stop()
 
+        self.game_timer = QTimer(self)
+        self.game_timer.timeout.connect(self._tick_game_clock)
+        self.game_timer.start(1000)
 
+    def _tick_game_clock(self):
+        self.game_seconds -= 1
+        self._update_game_clock_label()
+        if self.game_seconds <= 0:
+            # time's up
+            self.game_timer.stop()
+            # If you have an engine hook, call it; otherwise just log.
+            if hasattr(self.engine, "end_game"):
+                self.engine.end_game()
+            print("[UI] Game clock finished.")
 
+    def _update_game_clock_label(self):
+        if not self.game_clock_label:
+            self.game_clock_label = self.scoreboard_page.findChild(QLabel, "gameClockLabel")
+        if self.game_clock_label:
+            m, s = divmod(max(0, self.game_seconds), 60)
+            self.game_clock_label.setText(f"{m:02d}:{s:02d}")
 
+#------------------------------------------------------------------------------#
 
 # Simply used for showing the splash screen
 def Start_App(app, window):
@@ -568,49 +607,9 @@ def Build_Settings_Screen(start_callback, engine):
     menu.setCurrentRow(0)
 
     main_layout.addLayout(body_layout)
-    # inside Build_Settings_Screen(), after creating start_button, before adding header_layout:
-    # countdown_label = QLabel(" ")
-    # countdown_label.setObjectName("countdownLabel")
-    # countdown_label.setFixedSize(120, 120)
-    # countdown_label.setAlignment(Qt.AlignCenter)
-    # countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444;")
-    # header_layout.addWidget(countdown_label)
-
-
     return container
 
 
-
-
-#################################
-######## SCOREBOARD PAGE ########
-#################################
-
-##### Scoreboard Builder #####
-# def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
-
-#     container = QWidget()
-#     container.setStyleSheet("background-color: #222;")
-#     h_layout = QHBoxLayout(container)
-
-#     red_team = red_team or []
-#     green_team = green_team or []
-
-#     # Left: stacked scoreboards
-#     left_layout = QVBoxLayout()
-#     left_layout.setSpacing(20)
-#     left_layout.addWidget(Build_Team_Table("Red Team", red_team, "#cc0000"))
-#     left_layout.addWidget(Build_Team_Table("Green Team", green_team, "#00cc00"))
-#     h_layout.addLayout(left_layout)
-
-#     # Right: message box
-#     message_box = QTextEdit()
-#     message_box.setReadOnly(True)
-#     message_box.setPlaceholderText("Game messages will appear here...")
-#     message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
-#     h_layout.addWidget(message_box)
-
-#     return container
 def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     container = QWidget()
     container.setStyleSheet("background-color: #222;")
@@ -623,15 +622,38 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     header = QHBoxLayout()
     header.setContentsMargins(0, 0, 0, 0)
     header.addStretch()
-    countdown_label = QLabel(" ")
-    countdown_label.setObjectName("countdownLabelScore")     # <-- we’ll find this later
-    countdown_label.setFixedSize(160, 160)
+
+# 30 second countdown label
+
+    countdown_label = QLabel(" ")                            # big countdown label at top center                      
+    countdown_label.setObjectName("countdownLabelScore")     # give it an object name for later reference
+    countdown_label.setFixedSize(160, 160)                   # fixed size for consistent layout
     countdown_label.setAlignment(Qt.AlignCenter)
     countdown_label.setStyleSheet("background: transparent; border: none;")
     countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
-    header.addWidget(countdown_label)
+
+
+# 6 minute game clock label
+
+    game_clock = QLabel(" ")                     # start of our 6 minute game time clock
+    game_clock.setObjectName("gameClockLabel")       # give it an object name for later reference
+    game_clock.setFixedSize(160, 160)                # fixed size for consistent layout
+    game_clock.setAlignment(Qt.AlignCenter)          # center align
+    game_clock.setStyleSheet("font-size: 34px; font-weight:bold; color: white;")
+
+
+
+    # Stack them vertically so the clock sits under the big countdown
+
+    clock_column = QVBoxLayout()                    
+    clock_column.addWidget(countdown_label, alignment=Qt.AlignCenter)
+    clock_column.addWidget(game_clock, alignment=Qt.AlignCenter)
+    
+
+    header.addLayout(clock_column)                
     header.addStretch()
     v_layout.addLayout(header)
+
 
     # --- Body: existing two-team tables (left) + message box (right) ---
     h_layout = QHBoxLayout()
@@ -716,22 +738,6 @@ def Build_Team_Table(team_name, players, team_color):
     return wrapper
 
 
-# need to create a game start countdown that goes from 30 ... 0 
-# this countdown will be at the top middle of the screen
-# it will appear while in the main
-# occurs after start is pressed and countdown begins
-
-def start_countdown(self):
-    folder = "countdown_images/"  # path to your folder
-    for i in range(31):          # goes from 0 to 30
-        filename = f"{i}.tif"  # or .jpg, .jpeg, etc.
-        path = os.path.join(folder, filename)
-        if os.path.exists(path):
-            print(f"Opening {path}")
-            img = Image.open(path)
-            # do something with img (e.g., display, resize, etc.)
-        else:
-            print(f"File {path} not found.")
 
 
 
