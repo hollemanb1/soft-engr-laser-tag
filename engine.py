@@ -120,12 +120,13 @@ class GameEngine:
             
         print("[engine] Game stopped")
         
-    def join_player(self, username: str):
+    def join_player(self, username: str, hw_id: str):
         """Add new player with auto-gen hardware ID/team"""
         
         # Generate a random 4-digit hex hardware ID
-        rand_num = random.randint(1, 9999)
-        hw_id = f"hw0x{rand_num:04x}"
+        #rand_num = random.randint(1, 9999)
+        #hw_id = f"hw0x{rand_num:04x}"
+        hw_id = hw_id # ik this line sucks but liek you rename everything if you so please
         
         #Assign team (Even = Red, Odd = Green)
         team = "red" if rand_num % 2 == 0 else "green"
