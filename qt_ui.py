@@ -399,13 +399,14 @@ def User_Page(start_callback, clear_local, engine):                             
 
     def Add_User(line):                                                                     # now to handle actually adding the player after searching for them
         player_id = int(id_input.text())
-        codename = codename_input.text().strip()                                            # normalizes the codename input for a user mapped to their ID; removes leading/trailing whitespace
+        codename = codename_input.text().strip()
+        hw_id = hw_id_input.text().strip()
 
         success = add_player(player_id, codename)                                           # attempts to add the player to the DB, returns True if successful, False otherwise
 
         if success:
-            engine.join_player(codename)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
+            engine.join_player(codename, hw_id)                                             # adds the player to the game engine
+            local_ui_player_list.addItem(f"{codename} -- ({player_id}/{hw_id})")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
