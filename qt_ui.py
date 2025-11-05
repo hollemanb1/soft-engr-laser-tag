@@ -33,6 +33,8 @@ from PyQt5.QtWidgets import QShortcut
 from PyQt5.QtGui import QKeySequence, QPixmap
 
 
+
+
 # at top of file:
 def load_pix_safe(path: str):
     pm = QPixmap(path)
@@ -48,10 +50,6 @@ def load_pix_safe(path: str):
     except Exception as e:
         print(f"[WARN] load_pix_safe failed for {path}: {e}")
     return None
-
-
-
-
 
 
 
@@ -212,6 +210,7 @@ class ScoreboardWindow(QMainWindow):                                            
     def start_with_countdown(self):
         # ensure we're on the menu page
         self.stack.setCurrentIndex(0)
+        
         # find the label in the settings page once
         self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
         self._count = 30
@@ -285,6 +284,7 @@ class ScoreboardWindow(QMainWindow):                                            
         self.in_countdown = True
         self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
         self._count = 30
+            
         self._update_scoreboard_countdown(self._count)
 
         self._countdown_timer = QTimer(self)
@@ -294,6 +294,11 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def _tick_scoreboard_countdown(self):
         self._count -= 1
+        
+        # Start Music at 17 (For timing purposes)
+        if self._count == 17:
+            self.engine.start_music()
+            
         if self._count < 0:
             self._countdown_timer.stop()
             if self.countdown_label:

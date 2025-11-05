@@ -23,6 +23,7 @@ import socket # UDP sockets
 import queue # Data Structure of choice
 import time # For clock
 import random # random hardware IDs
+import pygame
 
 # | Scoring Rules |
 STANDARD_HIT = 10 # 10 Points for P2P Combat
@@ -37,6 +38,13 @@ class Player:
         self.username = username
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
+        
+# | Music Engine |
+pygame.init()
+pygame.mixer.init()
+mp3_file = "Photon_Audio.mp3"
+pygame.mixer.music.load(mp3_file)
+pygame.mixer.music.set_volume(1)
         
 # | Main Game Engine |
 class GameEngine:
@@ -60,6 +68,8 @@ class GameEngine:
         
         self._threads: list[threading.Thread] = [] # Threads if desired
         
+    def start_music(self):
+        pygame.mixer.music.play()    
     # Function to Change the Target IP for outgoing messages (before game start)
     def change_ip(self, new_ip: str):
         self.ip = new_ip
@@ -88,6 +98,8 @@ class GameEngine:
         # Start Thread (On own delayed thread so UI not blocked)
         self._start_thread(self._delayed_start_code, name="start_code")
         
+        # pygame.mixer.music.play()
+        
         print("[engine] Game Started!")
     
     # Stop Game Function    
@@ -99,6 +111,9 @@ class GameEngine:
         for _ in range(3):
             self.send_code("221")
             time.sleep(0.05)
+        
+        pygame.mixer.music.stop()
+        pygame.quit()
         
         # Turn running marker off
         self.running = False
