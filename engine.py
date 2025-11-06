@@ -38,6 +38,7 @@ class Player:
         self.username = username
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
+        self.has_icon = False
         
 # | Music Engine |
 pygame.init()
@@ -194,6 +195,7 @@ class GameEngine:
         if target_code == "43": # Green Base Hit: Red Team + 100
             if attacker.team == "red":
                 attacker.score += BASE_43_HIT
+                attacker.has_icon = True
                 print(f"[engine] Red Base Score! {attacker.username} + {BASE_43_HIT}")
                 self.send_code("43")
                 return
@@ -201,6 +203,7 @@ class GameEngine:
         if target_code == "53": # Green Base Hit: Red Team + 100
             if attacker.team == "green":
                 attacker.score += BASE_53_HIT
+                attacker.has_icon = True
                 print(f"[engine] Green Base Score! {attacker.username} + {BASE_53_HIT}")
                 self.send_code("53")
                 return
