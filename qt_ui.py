@@ -184,12 +184,6 @@ class ScoreboardWindow(QMainWindow):                                            
         for row, p in enumerate(team):
             name_item  = QTableWidgetItem(" " + p.username)
             score_item = QTableWidgetItem(str(p.score))
-            if getattr(p, "has_base_icon", False):
-                BASE_DIR = os.path.dirname(__file__)
-                icon_path = os.path.join(BASE_DIR, "baseicon.jpg")
-                if os.path.exists(icon_path):
-                    icon = QPixmap(icon_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
-                    name_item.setData(Qt.DecorationRole, icon)
             name_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 0, name_item)
