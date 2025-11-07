@@ -381,9 +381,17 @@ def User_Page(start_callback, clear_local, engine):                             
 
         success = add_player(player_id, codename)                                           # attempts to add the player to the DB, returns True if successful, False otherwise
 
+        if not success and not engine.join_player(codename, hw_id):
+            print("HWID Dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("HWID Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
+        
         if success:
             engine.join_player(codename, hw_id)                                             # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename}({player_id})          HWID = {hw_id}")                       # adds the player to the local UI list
+            local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
