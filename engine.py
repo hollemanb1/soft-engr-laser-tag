@@ -70,7 +70,7 @@ class GameEngine:
         
     def start_music(self):
         pygame.mixer.music.play()    
-    # Function to Change the Target IP for outgoing messages (before game start)
+        
     def change_ip(self, new_ip: str):
         self.ip = new_ip
         print(f"[engine] send target ip =  {self.ip}")
@@ -138,10 +138,9 @@ class GameEngine:
         
         # Generate a random 4-digit hex hardware ID
         rand_num = random.randint(1, 9999)
-        hw_id = hw_id # ik this line sucks but liek you rename everything if you so please
         
         #Assign team (Even = Red, Odd = Green)
-        team = "red" if hw_id % 2 == 0 else "green"
+        team = "red" if int(hw_id) % 2 == 0 else "green"
         
         # Add new player to Player List
         if hw_id not in self.players:
