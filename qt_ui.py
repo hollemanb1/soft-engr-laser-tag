@@ -313,20 +313,17 @@ def build_form_box(box_title, fields):                                          
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
 def User_Page(start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
+    joined_codenames = set()
     local_ui_player_list = QListWidget()
     local_ui_player_list.setFixedSize(600, 400)
     local_ui_player_list.setObjectName("local_ui_player_list")
     local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
 
     def Search(line):
-        """Search for a player by ID and add them to the engine if found."""
-
-
         try:
             player_id = int(line.text())                                                    # trys to get the player ID from the input line
             hw_id = int(hw_id_input.text().strip())
         except ValueError:
-            # Invalid input
             search_button.setEnabled(False)                                                 # simple error handling for invalid input
             search_button.setText("Invalid ID")
             search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
@@ -334,24 +331,39 @@ def User_Page(start_callback, clear_local, engine):                             
             return
 
         result = search_player(player_id)                                                   # searches for the player with given ID and saves the result of search
+        codename = result["codename"]
 
-        if result:                                                                          # if the user is found in the DB, add them to the game engine.
-            codename = result["codename"]
-            engine.join_player(codename, hw_id)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename}({player_id})          HWID = {hw_id}")                       # adds the player to the local UI list
+        if codename in joined_codenames:
+            print("username dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("User Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
 
+        if not engine.join_player(codename, hw_id):
+            print("HWID Dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("HWID Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
+            
+        if result:
+            print("adding user")
+            joined_codenames.add(codename)
+            local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")
             search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
             search_button.setText("Player Added!")                                          # changes button text to indicate success
             search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")       # changes button color to green, representing validity
             QTimer.singleShot(1500, Reset_User_UI)                                          # resets the UI after 1.5 seconds, allowing for another search
+        else:
+            search_button.setEnabled(False)                                                     # disables the search button to prevent multiple clicks
+            search_button.setText("Not Found")                                                  # changes button text to indicate failure
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")           # changes button color to red, representing invalidity
+            codename_input.show()                                                               # shows the codename input field for user to enter a codename
+            add_button.show()
 
-        else:                                                                               # now if no player is found witht he ID inputted, the button operations will go as follows
-            # Not found → prompt for codename
-            search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
-            search_button.setText("Not Found")                                              # changes button text to indicate failure
-            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")       # changes button color to red, representing invalidity
-            codename_input.show()                                                           # shows the codename input field for user to enter a codename
-            add_button.show()                                                               # shows the add button for user to click after entering codename
 
     def Add_User(line):                                                                     # now to handle actually adding the player after searching for them
         player_id = int(id_input.text())
