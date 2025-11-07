@@ -23,11 +23,12 @@ import socket # UDP sockets
 import queue # Data Structure of choice
 import time # For clock
 import random # random hardware IDs
+import pygame
 
 # | Scoring Rules |
 STANDARD_HIT = 10 # 10 Points for P2P Combat
 BASE_43_HIT = 100 # 100 Points for Hitting Base 43
-BASE_53_HIT = 500 # 500 Points for Hitting Base 53
+BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 
 
 # | Player Object Initialization | 
@@ -37,6 +38,13 @@ class Player:
         self.username = username
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
+        
+# | Music Engine |
+pygame.init()
+pygame.mixer.init()
+mp3_file = "Photon_Audio.mp3"
+pygame.mixer.music.load(mp3_file)
+pygame.mixer.music.set_volume(1)
         
 # | Main Game Engine |
 class GameEngine:
@@ -60,6 +68,8 @@ class GameEngine:
         
         self._threads: list[threading.Thread] = [] # Threads if desired
         
+    def start_music(self):
+        pygame.mixer.music.play()    
     # Function to Change the Target IP for outgoing messages (before game start)
     def change_ip(self, new_ip: str):
         self.ip = new_ip
@@ -100,6 +110,9 @@ class GameEngine:
             self.send_code("221")
             time.sleep(0.05)
         
+        pygame.mixer.music.stop()
+        pygame.quit()
+        
         # Turn running marker off
         self.running = False
         
@@ -124,12 +137,11 @@ class GameEngine:
         """Add new player with auto-gen hardware ID/team"""
         
         # Generate a random 4-digit hex hardware ID
-        #rand_num = random.randint(1, 9999)
-        #hw_id = f"hw0x{rand_num:04x}"
+        rand_num = random.randint(1, 9999)
         hw_id = hw_id # ik this line sucks but liek you rename everything if you so please
         
         #Assign team (Even = Red, Odd = Green)
-        team = "red" if rand_num % 2 == 0 else "green"
+        team = "red" if hw_id % 2 == 0 else "green"
         
         # Add new player to Player List
         if hw_id not in self.players:
@@ -145,11 +157,6 @@ class GameEngine:
         # Register Broadcast
         self.send_text(f"REG: {hw_id}:{username}:{team}")
         
-    # Remove Specific Player    
-    def remove_player(self, hw_id: str):
-        if hw_id in self.players:
-            print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
-            del self.players[hw_id]
             
     # Clear Player List
     def clear_player_list(self):
