@@ -95,13 +95,22 @@ def init_app():
     return app                                                                              # basically this function will establish the app's customizable features,
                                                                                             # allowing for quick changes that will be returned to be used in main
 
-
+def append_message(message_box: QTextEdit, text: str, max_lines = 32):
+    lines = message_box.toPlainText().splitlines()
+    lines.append(text)
+    if len(lines) > max_lines:
+        lines = lines[-max_lines:]
+    message_box.setPlainText("\n".join(lines))
+    
+    cursor = message_box.textCursor()
+    cursor.movePosition(cursor.End)
+    message_box.setTextCursor(cursor)
 
 class ScoreboardWindow(QMainWindow):                                                        # main window containing stacked settings and scoreboard pages
     def __init__(self, engine):
         super().__init__()
 
-        self.setMinimumSize(720, 820)   # width, height
+        self.in_countdown = False
 
         self.engine = engine                                                                # set engine reference for later usage
 
@@ -111,8 +120,11 @@ class ScoreboardWindow(QMainWindow):                                            
         self.setCentralWidget(self.stack)                                                   # set stack as central widget of main window, allowing for page switching
 
         # --- Build pages ---
+        #self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
         self.settings_page = Build_Settings_Screen(self.start_game, self.qt_clear_list, self.engine)
-        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)
+
+        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
+        self.message_box = self.scoreboard_page.message_box
 
         # --- Add pages to stack ---
         self.stack.addWidget(self.settings_page)                                            # index 0
@@ -128,7 +140,7 @@ class ScoreboardWindow(QMainWindow):                                            
                 self.start_game()
                 return
             elif event.key() == Qt.Key_F12:
-                self.qt_clear_list()
+                qt_clear_list(self)
                 return
         super().keyPressEvent(event)
 
@@ -321,9 +333,9 @@ def build_form_box(box_title, fields):                                          
 def User_Page(start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
     joined_codenames = set()
     local_ui_player_list = QListWidget()
-    local_ui_player_list.setFixedSize(600, 600)
+    local_ui_player_list.setFixedSize(600, 400)
     local_ui_player_list.setObjectName("local_ui_player_list")
-    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 16px; padding: 3px;")
+    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
 
     def Search(line):
         try:
@@ -499,7 +511,7 @@ def Build_Settings_Screen(start_callback, clear_local, engine):
     header_layout = QHBoxLayout()
     header_text = QLabel("Settings")
     header_text.setStyleSheet("font-size: 20px; font-weight: bold; padding: 1px;")
-    start_button = QPushButton("Start Game (F5)")
+    start_button = QPushButton("Start Game")
     start_button.clicked.connect(start_callback)
     start_button.setStyleSheet("font-size: 13px; background-color: #2f2f2f")
     header_layout.addWidget(header_text)
@@ -583,7 +595,15 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     message_box.setReadOnly(True)
     message_box.setPlaceholderText("Game messages will appear here...")
     message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
+    message_box.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setReadOnly(True)
+    container.message_box = message_box
     h_layout.addWidget(message_box)
+    
+    for i in range(50):
+        append_message(container.message_box, i)
+        
 
     v_layout.addLayout(h_layout)
 
@@ -603,7 +623,7 @@ def Build_Team_Table(team_name, players, team_color):
     table.horizontalHeader().setVisible(False)
     table.setShowGrid(False)
     table.setStyleSheet(
-        "background-color: #1a1a1a; color: white; font-size: 14px; "
+        "background-color: #1a1a1a; color: white; font-size: 16px; "
         "gridline-color: #1a1a1a; border-radius: 6px;"
     )
 
@@ -618,7 +638,6 @@ def Build_Team_Table(team_name, players, team_color):
 
     table.horizontalHeader().setStretchLastSection(True)
     table.setColumnWidth(0, 200)
-    table.setFixedSize(400, 500)
 
     # Header row
     header_layout = QHBoxLayout()
@@ -650,3 +669,4 @@ def Build_Team_Table(team_name, players, team_color):
     wrapper_layout.addWidget(table)
 
     return wrapper
+
