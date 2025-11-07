@@ -225,7 +225,6 @@ class ScoreboardWindow(QMainWindow):                                            
         self._countdown_timer.start(1000)
 
     def _tick_game_countdown(self, func):
-        print("tick", QTime.currentTime().toString("hh:mm:ss.zzz"))
         self._count -= 1
 
         # Start Music at 17 (For timing purposes)
@@ -523,7 +522,7 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     header.addStretch()
     countdown_label = QLabel()
     countdown_label.setObjectName("countdownLabel")
-    countdown_label.setFixedSize(125, 20)
+    countdown_label.setFixedSize(200, 20)
     countdown_label.setAlignment(Qt.AlignCenter)
     countdown_label.setStyleSheet("background-color: #1a1a1a; border: none; font-weight: bold; font-size: 18px; color: red;")
     countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
