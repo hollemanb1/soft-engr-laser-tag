@@ -166,7 +166,7 @@ class GameEngine:
     # |Event Application (Internal) |
     def _apply_hit(self, attacker_hwid: int, target_code: int):
         """Apply the scoring/broadcast rules for incoming 'A:B' string"""
-        print("\n\n")
+        print("\n")
         print(f"applying hit: attacker_hwid={attacker_hwid} target_code={target_code}")
         
         print("DEBUG - players dict keys:", list(self.players.keys()))
@@ -216,11 +216,11 @@ class GameEngine:
         # Enemy Hit (Attacker +10 Points)
         attacker.score += STANDARD_HIT
         print(f"[engine] Enemy hit: {attacker.username} ({attacker.hw_id})"
-              f"hit {target.username} ({target.hw_id}), -{STANDARD_HIT}")
+              f"hit {target.username} ({target.hw_id}), +{STANDARD_HIT}")
         
         # Broadcast Target's Equipment ID
         self.send_code(target.hw_id)
-        print("\n\n")
+        print("\n")
                   
     # | Necessary Threads |
     def _listen_loop(self):
