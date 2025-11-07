@@ -27,7 +27,7 @@ from PyQt5.QtWidgets import (
     QMainWindow, QSizePolicy
 )
 from PyQt5.QtGui import QPixmap, QFont, QImage
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QTime
 from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
 from PyQt5.QtGui import QKeySequence, QPixmap
@@ -112,7 +112,7 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # --- Build pages ---
         #self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
-        self.settings_page = Build_Settings_Screen(self.start_game_with_countdown_on_scoreboard, self.qt_clear_list, self.engine)
+        self.settings_page = Build_Settings_Screen(self.start_game, self.qt_clear_list, self.engine)
 
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
 
@@ -127,7 +127,7 @@ class ScoreboardWindow(QMainWindow):                                            
     def keyPressEvent(self, event):
         if self.stack.currentWidget() is self.settings_page:
             if event.key() == Qt.Key_F5:
-                self.start_game_with_countdown_on_scoreboard()
+                self.start_game()
                 return
             elif event.key() == Qt.Key_F12:
                 qt_clear_list(self)
@@ -143,6 +143,12 @@ class ScoreboardWindow(QMainWindow):                                            
             print("Player List Cleared!")
 
     def start_game(self):
+        self.start_game_countdown("Get Ready: ", 20, self.start_main_game)
+
+
+    def start_main_game(self):
+        self.start_game_countdown("Time Left: ", 10, self.stop_game)
+
         self.engine.start_game()
         self.stack.setCurrentIndex(1)
 
@@ -150,6 +156,10 @@ class ScoreboardWindow(QMainWindow):                                            
         self.poll_timer = QTimer(self)                                                      # poll: to regularly check for new events from the engine
         self.poll_timer.timeout.connect(self._poll_events)                                  # connect the timer's timeout signal to the _poll_events method
         self.poll_timer.start(200)                                                          # poll every 200 ms
+
+    def stop_game(self):
+        print("STOP IT NOOOOOOOOOOOOO")
+        self.engine.stop_game
 
     def _poll_events(self):
         self.engine.process_pending_events()                                                # process any pending events in the engine
@@ -159,7 +169,6 @@ class ScoreboardWindow(QMainWindow):                                            
         players = list(self.engine.players.values())
         #print("[UI] refresh_scoreboard: players =", [p.username for p in players])  # <--
 
-        # TODO: replace this split with your real team logic if you have one
         mid = len(players) // 2
         red_team = players[:mid]
         green_team = players[mid:]
@@ -196,109 +205,46 @@ class ScoreboardWindow(QMainWindow):                                            
     def go_to_scoreboard(self):
         self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
 
-    def start_with_countdown(self):
-        # ensure we're on the menu page
-        self.stack.setCurrentIndex(0)
-        # find the label in the settings page once
-        self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
-        self._count = 30
 
-        # draw first frame immediately
-        self._update_countdown_label(self._count)
-
-        # tick every second
-        self._countdown_timer = QTimer(self)
-        self._countdown_timer.timeout.connect(self._tick_countdown)
-        self._countdown_timer.start(1000)
-
-    def _tick_countdown(self):
-        self._count -= 1
-        if self._count < 0:
-            # done → clear label, stop timer, start game
-            self._countdown_timer.stop()
-            if self.countdown_label:
-                self.countdown_label.clear()
-            self.start_game()
-            return
-        self._update_countdown_label(self._count)
-
-    def _update_countdown_label(self, n: int):
-        folder = "countdown_images"
-        path = os.path.join(folder, f"{n}.tif")  # keep your .tif if you want
-        pm = load_pix_safe(path) if os.path.exists(path) else None
-        if pm:
-            self.countdown_label.setPixmap(pm.scaled(
-                self.countdown_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.countdown_label.setText("")
-        else:
-            self.countdown_label.setPixmap(QPixmap())
-            self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet(
-                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
-            )
-
-    def _update_scoreboard_countdown(self, n: int):
-        if not self.countdown_label:
-            return
-        folder = "countdown_images"
-        path = os.path.join(folder, f"{n}.tif")
-        pm = load_pix_safe(path) if os.path.exists(path) else None
-        if pm:
-            self.countdown_label.setPixmap(pm.scaled(
-                self.countdown_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.countdown_label.setText("")
-        else:
-            self.countdown_label.setPixmap(QPixmap())
-            self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet(
-                "background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;"
-            )
-    def start_game_with_countdown_on_scoreboard(self):
+    def start_game_countdown(self, message: str, count: int, func=None):
         self.stack.setCurrentIndex(1)
+        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabel")
+        if not self.countdown_label:
+            raise RuntimeError("QLabel 'countdownLabel' not found on scoreboard_page")
 
-        if not hasattr(self, "poll_timer") or self.poll_timer is None:
-            self.poll_timer = QTimer(self)
-            self.poll_timer.timeout.connect(self._poll_events)
-            self.poll_timer.start(200)
+        self._message = message
+        self._count = int(count)
+        self.countdown_label.setText(f"{self._message}{self._count}")
 
-        self.refresh_scoreboard()        # <--- draw current players NOW
-
-        self.in_countdown = True
-        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
-        self._count = 30
-        self._update_scoreboard_countdown(self._count)
+        if getattr(self, "_countdown_timer", None):
+            self._countdown_timer.stop()
 
         self._countdown_timer = QTimer(self)
-        self._countdown_timer.timeout.connect(self._tick_scoreboard_countdown)
+        # pass a callable, don't call it
+        self._countdown_timer.timeout.connect(partial(self._tick_game_countdown, func))
         self._countdown_timer.start(1000)
 
-
-    def _tick_scoreboard_countdown(self):
+    def _tick_game_countdown(self, func):
+        print("tick", QTime.currentTime().toString("hh:mm:ss.zzz"))
         self._count -= 1
+
+        # Start Music at 17 (For timing purposes)
+        if self._count == 16:
+            self.engine.start_music()
+
         if self._count < 0:
             self._countdown_timer.stop()
-            if self.countdown_label:
-                self.countdown_label.clear()
-            self.engine.start_game()
-            self.in_countdown = False          # resumes UI refresh
-            self.stack.setCurrentIndex(1)
-            self.refresh_scoreboard()          # first reveal after GO
+            self.countdown_label.clear()
+            if callable(func):
+                func()  # <— actually call it
             return
-        self._update_scoreboard_countdown(self._count)
+        self.countdown_label.setText(f"{self._message}{self._count}")
+
+
 
     def _poll_events(self):
         self.engine.process_pending_events()
-        self.refresh_scoreboard()    # <--- remove the in_countdown check
-
-
-
-
+        self.refresh_scoreboard()
 
 
 
@@ -424,6 +370,7 @@ def User_Page(start_callback, clear_local, engine):                             
         add_button.hide()                                                                   # hides the add button
         id_input.clear()                                                                    # clears the ID input field for next input
         codename_input.clear()                                                              # clears the codename input field for next input
+        hw_id_input.clear()
         search_button.setEnabled(True)
         search_button.setText("Search")
         search_button.setStyleSheet("background-color: #333; color: white;")                # allows for searching, resets button text and color to default
@@ -552,14 +499,6 @@ def Build_Settings_Screen(start_callback, clear_local, engine):
     menu.setCurrentRow(0)
 
     main_layout.addLayout(body_layout)
-    # inside Build_Settings_Screen(), after creating start_button, before adding header_layout:
-    # countdown_label = QLabel(" ")
-    # countdown_label.setObjectName("countdownLabel")
-    # countdown_label.setFixedSize(120, 120)
-    # countdown_label.setAlignment(Qt.AlignCenter)
-    # countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444;")
-    # header_layout.addWidget(countdown_label)
-
 
     return container
 
@@ -570,31 +509,6 @@ def Build_Settings_Screen(start_callback, clear_local, engine):
 ######## SCOREBOARD PAGE ########
 #################################
 
-##### Scoreboard Builder #####
-# def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
-
-#     container = QWidget()
-#     container.setStyleSheet("background-color: #222;")
-#     h_layout = QHBoxLayout(container)
-
-#     red_team = red_team or []
-#     green_team = green_team or []
-
-#     # Left: stacked scoreboards
-#     left_layout = QVBoxLayout()
-#     left_layout.setSpacing(20)
-#     left_layout.addWidget(Build_Team_Table("Red Team", red_team, "#cc0000"))
-#     left_layout.addWidget(Build_Team_Table("Green Team", green_team, "#00cc00"))
-#     h_layout.addLayout(left_layout)
-
-#     # Right: message box
-#     message_box = QTextEdit()
-#     message_box.setReadOnly(True)
-#     message_box.setPlaceholderText("Game messages will appear here...")
-#     message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
-#     h_layout.addWidget(message_box)
-
-#     return container
 def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     container = QWidget()
     container.setStyleSheet("background-color: #222;")
@@ -607,11 +521,11 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     header = QHBoxLayout()
     header.setContentsMargins(0, 0, 0, 0)
     header.addStretch()
-    countdown_label = QLabel(" ")
-    countdown_label.setObjectName("countdownLabelScore")     # <-- we’ll find this later
-    countdown_label.setFixedSize(160, 160)
+    countdown_label = QLabel()
+    countdown_label.setObjectName("countdownLabel")
+    countdown_label.setFixedSize(125, 20)
     countdown_label.setAlignment(Qt.AlignCenter)
-    countdown_label.setStyleSheet("background: transparent; border: none;")
+    countdown_label.setStyleSheet("background-color: #1a1a1a; border: none; font-weight: bold; font-size: 18px; color: red;")
     countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
     header.addWidget(countdown_label)
     header.addStretch()
@@ -698,28 +612,4 @@ def Build_Team_Table(team_name, players, team_color):
     wrapper_layout.addWidget(table)
 
     return wrapper
-
-
-# need to create a game start countdown that goes from 30 ... 0
-# this countdown will be at the top middle of the screen
-# it will appear while in the main
-# occurs after start is pressed and countdown begins
-
-def start_countdown(self):
-    folder = "countdown_images/"  # path to your folder
-    for i in range(31):          # goes from 0 to 30
-        filename = f"{i}.tif"  # or .jpg, .jpeg, etc.
-        path = os.path.join(folder, filename)
-        if os.path.exists(path):
-            print(f"Opening {path}")
-            img = Image.open(path)
-            # do something with img (e.g., display, resize, etc.)
-        else:
-            print(f"File {path} not found.")
-
-
-
-
-
-
 
