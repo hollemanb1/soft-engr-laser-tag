@@ -1,5 +1,5 @@
 """
-engine.py mk2 - Photon Laser Tag Engine (2nd Edition) - 9/30/25
+engine.py - Photon Laser Tag Engine (2nd Edition) - 9/30/25
 
 Protocols: 
 - Start Code: "202" (must wait 3 seconds after start_game())
