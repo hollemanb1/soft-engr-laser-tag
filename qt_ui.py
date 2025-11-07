@@ -338,10 +338,11 @@ def User_Page(start_callback, clear_local, engine):                             
             QTimer.singleShot(1500, Reset_User_UI)
             return
 
-        result = search_player(player_id)                                                   # searches for the player with given ID and saves the result of search
-        codename = result["codename"]
+        result = search_player(player_id)
+        codename = result.get("codename") if result else None
 
-        if codename in joined_codenames:
+
+        if codename != None and codename in joined_codenames:
             print("username dupe!")
             search_button.setEnabled(False)                                                 # simple error handling for invalid input
             search_button.setText("User Dupe")
@@ -349,7 +350,7 @@ def User_Page(start_callback, clear_local, engine):                             
             QTimer.singleShot(1500, Reset_User_UI)
             return
 
-        if not engine.join_player(codename, hw_id):
+        if codename != None and not engine.join_player(codename, hw_id):
             print("HWID Dupe!")
             search_button.setEnabled(False)                                                 # simple error handling for invalid input
             search_button.setText("HWID Dupe")
@@ -357,7 +358,7 @@ def User_Page(start_callback, clear_local, engine):                             
             QTimer.singleShot(1500, Reset_User_UI)
             return
             
-        if result:
+        if codename != None and result:
             print("adding user")
             joined_codenames.add(codename)
             local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")
@@ -376,7 +377,7 @@ def User_Page(start_callback, clear_local, engine):                             
     def Add_User(line):                                                                     # now to handle actually adding the player after searching for them
         player_id = int(id_input.text())
         codename = codename_input.text().strip()
-        hw_id = hw_id_input.text().strip()
+        hw_id = int(hw_id_input.text().strip())
 
         success = add_player(player_id, codename)                                           # attempts to add the player to the DB, returns True if successful, False otherwise
 
