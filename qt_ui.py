@@ -602,7 +602,7 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     h_layout.addWidget(message_box)
     
     for i in range(50):
-        append_message(container.message_box, i)
+        append_message(container.message_box, str(i))
         
 
     v_layout.addLayout(h_layout)
