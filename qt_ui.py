@@ -225,6 +225,7 @@ class ScoreboardWindow(QMainWindow):                                            
         self._countdown_timer.start(1000)
 
     def _tick_game_countdown(self, func):
+        print("tick", QTime.currentTime().toString("hh:mm:ss.zzz"))
         self._count -= 1
 
         # Start Music at 17 (For timing purposes)
@@ -312,8 +313,11 @@ def User_Page(start_callback, clear_local, engine):                             
 
     def Search(line):
         """Search for a player by ID and add them to the engine if found."""
+
+
         try:
             player_id = int(line.text())                                                    # trys to get the player ID from the input line
+            hw_id = hw_id_input.text().strip()
         except ValueError:
             # Invalid input
             search_button.setEnabled(False)                                                 # simple error handling for invalid input
@@ -327,7 +331,7 @@ def User_Page(start_callback, clear_local, engine):                             
         if result:                                                                          # if the user is found in the DB, add them to the game engine.
             codename = result["codename"]
             engine.join_player(codename, hw_id)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
+            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id})")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
             search_button.setText("Player Added!")                                          # changes button text to indicate success
@@ -351,7 +355,7 @@ def User_Page(start_callback, clear_local, engine):                             
 
         if success:
             engine.join_player(codename, hw_id)                                             # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename} -- ({player_id}/{hw_id})")                       # adds the player to the local UI list
+            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id})")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
@@ -522,7 +526,7 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     header.addStretch()
     countdown_label = QLabel()
     countdown_label.setObjectName("countdownLabel")
-    countdown_label.setFixedSize(200, 20)
+    countdown_label.setFixedSize(125, 20)
     countdown_label.setAlignment(Qt.AlignCenter)
     countdown_label.setStyleSheet("background-color: #1a1a1a; border: none; font-weight: bold; font-size: 18px; color: red;")
     countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
