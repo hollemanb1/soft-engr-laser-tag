@@ -331,7 +331,7 @@ def User_Page(start_callback, clear_local, engine):                             
         if result:                                                                          # if the user is found in the DB, add them to the game engine.
             codename = result["codename"]
             engine.join_player(codename, hw_id)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id})")                       # adds the player to the local UI list
+            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id}")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
             search_button.setText("Player Added!")                                          # changes button text to indicate success
@@ -355,7 +355,7 @@ def User_Page(start_callback, clear_local, engine):                             
 
         if success:
             engine.join_player(codename, hw_id)                                             # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id})")                       # adds the player to the local UI list
+            local_ui_player_list.addItem(f"{codename}({player_id})   HWID = {hw_id}")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
