@@ -219,7 +219,7 @@ class GameEngine:
               f"hit {target.username} ({target.hw_id}), +{STANDARD_HIT}")
         
         # Broadcast Target's Equipment ID
-        self.send_code(target.hw_id)
+        self.send_code(f"Okay, {target.hw_id}")
         print("\n")
                   
     # | Necessary Threads |
