@@ -143,15 +143,14 @@ class GameEngine:
         team = "red" if int(hw_id) % 2 == 0 else "green"
         
         # Add new player to Player List
-        if hw_id not in self.players:
+        if username not in self.players and hw_id not in self.players:
             self.players[hw_id] = Player(hw_id, username, team)
             temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
             self.send_queue.put(temp_string)
+            return True
         else:
             # If collision (unlikely), regenrate player
-            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
-            self.send_queue.put(temp_string)
-            return self.join_player(username)
+            return False
         
         # Register Broadcast
         self.send_text(f"REG: {hw_id}:{username}:{team}")
