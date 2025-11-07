@@ -30,6 +30,12 @@ STANDARD_HIT = 10 # 10 Points for P2P Combat
 BASE_43_HIT = 100 # 100 Points for Hitting Base 43
 BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 
+# | Music Engine |
+pygame.init()
+pygame.mixer.init()
+mp3_file = "Photon_Audio.mp3"
+pygame.mixer.music.load(mp3_file)
+pygame.mixer.music.set_volume(1)
 
 # | Player Object Initialization | 
 class Player:
@@ -39,12 +45,7 @@ class Player:
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
         
-# | Music Engine |
-pygame.init()
-pygame.mixer.init()
-mp3_file = "Photon_Audio.mp3"
-pygame.mixer.music.load(mp3_file)
-pygame.mixer.music.set_volume(1)
+        
         
 # | Main Game Engine |
 class GameEngine:
@@ -134,22 +135,14 @@ class GameEngine:
         print("[engine] Game stopped")
         
     def join_player(self, username: str, hw_id: str):
-        """Add new player with auto-gen hardware ID/team"""
-        
-        # Generate a random 4-digit hex hardware ID
-        rand_num = random.randint(1, 9999)
-        
-        #Assign team (Even = Red, Odd = Green)
         team = "red" if int(hw_id) % 2 == 0 else "green"
         
-        # Add new player to Player List
-        if username not in self.players and hw_id not in self.players:
+        if hw_id not in self.players:
             self.players[hw_id] = Player(hw_id, username, team)
-            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
-            self.send_queue.put(temp_string)
+            self.send_queue.put(f"Player joined: {username} ({hw_id}) [{team}]")
             return True
         else:
-            # If collision (unlikely), regenrate player
+            print("HWID Dupe")
             return False
         
         # Register Broadcast
