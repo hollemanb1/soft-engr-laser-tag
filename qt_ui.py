@@ -169,11 +169,9 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def refresh_scoreboard(self):
         players = list(self.engine.players.values())
-        #print("[UI] refresh_scoreboard: players =", [p.username for p in players])  # <--
-
-        mid = len(players) // 2
-        red_team = players[:mid]
-        green_team = players[mid:]
+        
+        red_team   = [p for p in players if getattr(p, "team", "").lower() == "red"]
+        green_team = [p for p in players if getattr(p, "team", "").lower() == "green"]
 
         red_table   = self.scoreboard_page.findChild(QTableWidget, "table_red")
         green_table = self.scoreboard_page.findChild(QTableWidget, "table_green")
@@ -188,13 +186,23 @@ class ScoreboardWindow(QMainWindow):                                            
         if green_total:
             green_total.setText(str(sum(p.score for p in green_team)))
 
-    def _populate_team_table(self, table, team):
+    def _populate_team_table(self, table: QTableWidget, team):
         if table is None:
             return
         table.setRowCount(len(team))
         for row, p in enumerate(team):
             name_item  = QTableWidgetItem(" " + p.username)
             score_item = QTableWidgetItem(str(p.score))
+
+            # accept either attribute name
+            has_icon = getattr(p, "has_base_icon", getattr(p, "has_icon", False))
+            if has_icon:
+                BASE_DIR = os.path.dirname(__file__)
+                icon_path = os.path.join(BASE_DIR, "baseicon.jpg")
+                if os.path.exists(icon_path):
+                    icon = QPixmap(icon_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    name_item.setData(Qt.DecorationRole, icon)
+
             name_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 0, name_item)
