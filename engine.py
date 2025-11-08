@@ -31,7 +31,7 @@ BASE_43_HIT = 100 # 100 Points for Hitting Base 43
 BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 
 # | Music Engine |
-pygame.init()
+# pygame.init()
 pygame.mixer.init()
 random_track_num = random.randint(1,8)
 mp3_file = "photon_audio/Track0" + str(random_track_num) + ".mp3"
@@ -187,7 +187,7 @@ class GameEngine:
         
         # | Base Hits |
         if target_code == 43: # Green Base Hit: Red Team + 100
-            if attacker.team == "red":
+            if attacker.team == "green":
                 attacker.score += BASE_43_HIT
                 attacker.has_icon = True
                 print(f"[engine] Red Base Score! {attacker.username} + {BASE_43_HIT}")
@@ -196,7 +196,7 @@ class GameEngine:
                 return
             
         if target_code == 53: # Green Base Hit
-            if attacker.team == "green":
+            if attacker.team == "red":
                 attacker.score += BASE_53_HIT
                 attacker.has_icon = True
                 print(f"[engine] Green Base Score! {attacker.username} + {BASE_53_HIT}")
