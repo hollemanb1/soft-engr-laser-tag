@@ -305,7 +305,7 @@ class ScoreboardWindow(QMainWindow):                                            
         self._count -= 1
         
         # Start Music at 17 (For timing purposes)
-        if self._count == 17:
+        if self._count == 18:
             self.engine.start_music()
             
         if self._count < 0:
