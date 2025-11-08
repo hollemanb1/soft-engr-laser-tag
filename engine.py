@@ -33,7 +33,8 @@ BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 # | Music Engine |
 pygame.init()
 pygame.mixer.init()
-mp3_file = "Photon_Audio.mp3"
+random_track_num = random.randint(1,8)
+mp3_file = "photon_audio/Track0" + str(random_track_num) + ".mp3"
 pygame.mixer.music.load(mp3_file)
 pygame.mixer.music.set_volume(1)
 
