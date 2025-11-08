@@ -53,6 +53,8 @@ class GameEngine:
     def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=300): #Initialized Values for Game Settings (Should NOT Change)
         self.players: dict[int, Player] = {} # Dictionary to hold the list of players
         
+        self.ui_messages = []
+        
         self.time_left = game_time
         self.running = False
         
@@ -69,6 +71,12 @@ class GameEngine:
         self.send_sock = None
         
         self._threads: list[threading.Thread] = [] # Threads if desired
+        
+    def add_to_ui_messages(self, text: str):
+        self.ui_messages.append(str(text))
+
+    def get_ui_messages(self) -> list[str]:
+        return self.ui_messages.copy()
         
     def start_music(self):
         pygame.mixer.music.play()    
@@ -182,6 +190,7 @@ class GameEngine:
                 attacker.score += BASE_43_HIT
                 attacker.has_icon = True
                 print(f"[engine] Red Base Score! {attacker.username} + {BASE_43_HIT}")
+                self.ui_messages.append(f"{attacker.username} hit Red Base!")
                 self.send_code("43")
                 return
             
@@ -190,6 +199,7 @@ class GameEngine:
                 attacker.score += BASE_53_HIT
                 attacker.has_icon = True
                 print(f"[engine] Green Base Score! {attacker.username} + {BASE_53_HIT}")
+                self.ui_messages.append(f"{attacker.username} hit Green Base!")
                 self.send_code("53")    
                 return
             
@@ -205,6 +215,7 @@ class GameEngine:
             target.score -= 10
             print(f"[engine] Friendly Fire: {attacker.username} ({attacker.hw_id})"
                   f"hit {target.username} ({target.hw_id}), -10 each")
+            self.ui_messages.append(f"Friendly Fire: {attacker.username} --> {target.username}")
             
             # Broadcast Equipment IDs
             self.send_code(attacker.hw_id)
@@ -213,8 +224,8 @@ class GameEngine:
             
         # Enemy Hit (Attacker +10 Points)
         attacker.score += STANDARD_HIT
-        print(f"[engine] Enemy hit: {attacker.username} ({attacker.hw_id})"
-              f"hit {target.username} ({target.hw_id}), +{STANDARD_HIT}")
+        print(f"[engine] Enemy hit: {attacker.username} ({attacker.hw_id}) hit {target.username} ({target.hw_id}), +{STANDARD_HIT}")
+        self.ui_messages.append(f"Enemy Hit: {attacker.username} --> {target.username}")
         
         # Broadcast Target's Equipment ID
         self.send_code(f"Okay, {target.hw_id}")
