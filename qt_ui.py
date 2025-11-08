@@ -26,11 +26,11 @@ from PyQt5.QtWidgets import (
     QListWidget, QStackedWidget, QLineEdit, QApplication,
     QMainWindow, QSizePolicy
 )
-from PyQt5.QtGui import QPixmap, QFont, QImage
+from PyQt5.QtGui import QPixmap, QFont, QImage, QKeySequence, QTextCursor
 from PyQt5.QtCore import Qt, QTimer, QTime
 from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
-from PyQt5.QtGui import QKeySequence, QPixmap
+from PyQt5 import QtGui
 
 
 # at top of file:
@@ -112,7 +112,8 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # --- Build pages ---
         self.settings_page = Build_Settings_Screen(self.start_game, self.qt_clear_list, self.engine)
-        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)
+        self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
+        self.message_box = self.scoreboard_page.message_box
 
         # --- Add pages to stack ---
         self.stack.addWidget(self.settings_page)                                            # index 0
@@ -121,6 +122,12 @@ class ScoreboardWindow(QMainWindow):                                            
         # Show settings first
         self.stack.setCurrentIndex(0)
 
+
+    def go_to_settings(self):
+        self.stack.setCurrentIndex(0)
+
+    def go_to_scoreboard(self):
+        self.stack.setCurrentIndex(1) 
 
     def keyPressEvent(self, event):
         if self.stack.currentWidget() is self.settings_page:
@@ -131,14 +138,6 @@ class ScoreboardWindow(QMainWindow):                                            
                 self.qt_clear_list()
                 return
         super().keyPressEvent(event)
-
-    def qt_clear_list(self):
-        self.engine.clear_player_list()
-        # also clear the visible list in Settings UI
-        lst = self.settings_page.findChild(QListWidget, "local_ui_player_list")
-        if lst:
-            lst.clear()
-            print("Player List Cleared!")
 
     def start_game(self):
         self.refresh_scoreboard()
@@ -161,11 +160,50 @@ class ScoreboardWindow(QMainWindow):                                            
         print("stopping game...")
         self.engine.stop_game
 
+    def start_game_countdown(self, message: str, count: int, func=None):
+        self.stack.setCurrentIndex(1)
+        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabel")
+        if not self.countdown_label:
+            raise RuntimeError("QLabel 'countdownLabel' not found on scoreboard_page")
+
+        self._message = message
+        self._count = int(count)
+        self.countdown_label.setText(f"{self._message}{self._count}")
+
+        if getattr(self, "_countdown_timer", None):
+            self._countdown_timer.stop()
+
+        self._countdown_timer = QTimer(self)
+        # pass a callable, don't call it
+        self._countdown_timer.timeout.connect(partial(self._tick_game_countdown, func))
+        self._countdown_timer.start(1000)
+
+    def _tick_game_countdown(self, func):
+        self._count -= 1
+
+        # Start Music at 17 (For timing purposes)
+        if self._count == 16:
+            self.engine.start_music()
+
+        if self._count < 0:
+            self._countdown_timer.stop()
+            self.countdown_label.clear()
+            if callable(func):
+                func()  # <— actually call it
+            return
+        self.countdown_label.setText(f"{self._message}{self._count}")
+        
     def _poll_events(self):
         self.engine.process_pending_events()                                                # process any pending events in the engine
-        self.refresh_scoreboard()                                                           # refresh scoreboard to display accurate data
+        self.refresh_scoreboard()  
+
+    #################################
+    ###### Scoreboard Methods #######
+    #################################
 
     def refresh_scoreboard(self):
+        self.refresh_messages()
+        
         players = list(self.engine.players.values())
         
         red_team   = [p for p in players if getattr(p, "team", "").lower() == "red"]
@@ -205,53 +243,39 @@ class ScoreboardWindow(QMainWindow):                                            
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 0, name_item)
             table.setItem(row, 1, score_item)
-
-
-    def go_to_settings(self):
-        self.stack.setCurrentIndex(0)                                                       # traversal: switch to settings page
-
-    def go_to_scoreboard(self):
-        self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
-
-
-    def start_game_countdown(self, message: str, count: int, func=None):
-        self.stack.setCurrentIndex(1)
-        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabel")
-        if not self.countdown_label:
-            raise RuntimeError("QLabel 'countdownLabel' not found on scoreboard_page")
-
-        self._message = message
-        self._count = int(count)
-        self.countdown_label.setText(f"{self._message}{self._count}")
-
-        if getattr(self, "_countdown_timer", None):
-            self._countdown_timer.stop()
-
-        self._countdown_timer = QTimer(self)
-        # pass a callable, don't call it
-        self._countdown_timer.timeout.connect(partial(self._tick_game_countdown, func))
-        self._countdown_timer.start(1000)
-
-    def _tick_game_countdown(self, func):
-        self._count -= 1
-
-        # Start Music at 17 (For timing purposes)
-        if self._count == 16:
-            self.engine.start_music()
-
-        if self._count < 0:
-            self._countdown_timer.stop()
-            self.countdown_label.clear()
-            if callable(func):
-                func()  # <— actually call it
+            
+    def refresh_messages(self):
+        if getattr(self, "message_box", None) is None:
+            self.message_box = self.scoreboard_page.findChild(QTextEdit, "messageBox")
+        mb = self.message_box
+        if mb is None:
             return
-        self.countdown_label.setText(f"{self._message}{self._count}")
 
+        max_lines = 25
 
+        msgs = self.engine.get_ui_messages()  # adjust if your engine is in a different attr
+        lines = msgs[-max_lines:] if msgs else []
 
-    def _poll_events(self):
-        self.engine.process_pending_events()
-        self.refresh_scoreboard()
+        # render
+        mb.setPlainText("\n".join(lines))
+
+        cur = mb.textCursor()
+        cur.movePosition(QtGui.QTextCursor.End)
+        mb.setTextCursor(cur)
+        mb.ensureCursorVisible()
+        
+    ###################################
+    ###### Miscellaneous Methods ######
+    ###################################
+    
+    def qt_clear_list(self):
+        self.engine.clear_player_list()
+        # also clear the visible list in Settings UI
+        lst = self.settings_page.findChild(QListWidget, "local_ui_player_list")
+        if lst:
+            lst.clear()
+            print("Player List Cleared!")
+
 
 
 
@@ -321,9 +345,9 @@ def build_form_box(box_title, fields):                                          
 def User_Page(start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
     joined_codenames = set()
     local_ui_player_list = QListWidget()
-    local_ui_player_list.setFixedSize(600, 600)
+    local_ui_player_list.setFixedSize(600, 400)
     local_ui_player_list.setObjectName("local_ui_player_list")
-    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 16px; padding: 3px;")
+    local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
 
     def Search(line):
         try:
@@ -580,9 +604,14 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     h_layout.addLayout(left_layout)
 
     message_box = QTextEdit()
+    message_box.setObjectName("messageBox")
     message_box.setReadOnly(True)
     message_box.setPlaceholderText("Game messages will appear here...")
-    message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
+    message_box.setStyleSheet("font-size: 18px; background-color: #333; color: white; padding: 4px;")
+    message_box.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setReadOnly(True)
+    container.message_box = message_box
     h_layout.addWidget(message_box)
 
     v_layout.addLayout(h_layout)
