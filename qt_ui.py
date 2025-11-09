@@ -251,7 +251,7 @@ class ScoreboardWindow(QMainWindow):                                            
         if mb is None:
             return
 
-        max_lines = 25
+        max_lines = 34
 
         msgs = self.engine.get_ui_messages()  # adjust if your engine is in a different attr
         lines = msgs[-max_lines:] if msgs else []
