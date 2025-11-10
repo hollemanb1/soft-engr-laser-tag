@@ -632,7 +632,7 @@ def Build_Team_Table(team_name, players, team_color):
     table.horizontalHeader().setVisible(False)
     table.setShowGrid(False)
     table.setStyleSheet(
-        "background-color: #1a1a1a; color: white; font-size: 14px; "
+        "background-color: #1a1a1a; color: white; font-size: 13px; "
         "gridline-color: #1a1a1a; border-radius: 6px;"
     )
 
