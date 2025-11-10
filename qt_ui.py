@@ -158,7 +158,8 @@ class ScoreboardWindow(QMainWindow):                                            
 
     def stop_game(self):
         print("stopping game...")
-        self.engine.stop_game
+        self.engine.stop_game()
+        self.close()
 
     def start_game_countdown(self, message: str, count: int, func=None):
         self.stack.setCurrentIndex(1)
