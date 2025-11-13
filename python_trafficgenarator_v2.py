@@ -3,6 +3,7 @@ import random
 import time
 
 bufferSize  = 1024
+friendly_fire = 0
 serverAddressPort   = ("0.0.0.0", 7500)
 clientAddressPort   = ("127.0.0.1", 7501)
 
@@ -56,6 +57,7 @@ while True:
 	# after 5 iterations, send friendly fire hit
 	if counter == 5:
 		message=(str(red1) + ":" + str(red2))
+		friendly_fire = 1
 		
 	# after 10 iterations, send base hit
 	if counter == 10:
@@ -68,15 +70,26 @@ while True:
 	UDPClientSocketTransmit.sendto(str.encode(str(message)), clientAddressPort)
 	# receive answer from game softare
 	
-	
 	received_data, address = UDPServerSocketReceive.recvfrom(bufferSize)
 	received_data = received_data.decode('utf-8')
+		
 	print ("Received from game software: " + received_data)
 	print ('')
+
+	# if we have friendly fire, do a second receive
+	if friendly_fire == 1:
+		received_data, address = UDPServerSocketReceive.recvfrom(bufferSize)
+		received_data = received_data.decode('utf-8')
+		friendly_fire = 0
+		print ("Received from game software: " + received_data)
+		print ('')
+		
 	counter = counter + 1;
 	if received_data == '221':
 		break;
 	time.sleep(random.randint(1,3))
 	
 print("program complete")
+
+
 
