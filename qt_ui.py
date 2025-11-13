@@ -111,7 +111,7 @@ class ScoreboardWindow(QMainWindow):                                            
         self.setCentralWidget(self.stack)                                                   # set stack as central widget of main window, allowing for page switching
 
         # --- Build pages ---
-        self.settings_page = Build_Settings_Screen(self.start_game, self.qt_clear_list, self.engine)
+        self.settings_page = Build_Settings_Screen(self, self.start_game, self.qt_clear_list, self.engine)
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
         self.message_box = self.scoreboard_page.message_box
 
@@ -121,6 +121,8 @@ class ScoreboardWindow(QMainWindow):                                            
 
         # Show settings first
         self.stack.setCurrentIndex(0)
+        
+        self.joined_codenames = set()
 
 
     def go_to_settings(self):
@@ -276,7 +278,9 @@ class ScoreboardWindow(QMainWindow):                                            
         if lst:
             lst.clear()
             print("Player List Cleared!")
-
+        print(self.joined_codenames)
+        self.joined_codenames = set()
+        print(self.joined_codenames)
 
 
 
@@ -343,8 +347,7 @@ def build_form_box(box_title, fields):                                          
 
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
-def User_Page(start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
-    joined_codenames = set()
+def User_Page(self, start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
     local_ui_player_list = QListWidget()
     local_ui_player_list.setFixedSize(600, 400)
     local_ui_player_list.setObjectName("local_ui_player_list")
@@ -365,7 +368,7 @@ def User_Page(start_callback, clear_local, engine):                             
         codename = result.get("codename") if result else None
 
 
-        if codename != None and codename in joined_codenames:
+        if codename != None and codename in self.joined_codenames:
             print("username dupe!")
             search_button.setEnabled(False)                                                 # simple error handling for invalid input
             search_button.setText("User Dupe")
@@ -383,7 +386,7 @@ def User_Page(start_callback, clear_local, engine):                             
             
         if codename != None and result:
             print("adding user")
-            joined_codenames.add(codename)
+            self.joined_codenames.add(codename)
             local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")
             search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
             search_button.setText("Player Added!")                                          # changes button text to indicate success
@@ -515,7 +518,7 @@ def Network_Page(engine):
 
 
 ##### Settings Builder (Sidebar + Pages) #####
-def Build_Settings_Screen(start_callback, clear_local, engine):
+def Build_Settings_Screen(self, start_callback, clear_local, engine):
     container = QWidget()
     container.setStyleSheet("background-color: #333; color: white;")
     main_layout = QVBoxLayout(container)   # vertical: header on top, body below
@@ -553,7 +556,7 @@ def Build_Settings_Screen(start_callback, clear_local, engine):
     body_layout.addWidget(menu)
 
     stack = QStackedWidget()
-    stack.addWidget(User_Page(start_callback, clear_local, engine))
+    stack.addWidget(User_Page(self, start_callback, clear_local, engine))
     stack.addWidget(Network_Page(engine))
     body_layout.addWidget(stack, stretch=1)
 
