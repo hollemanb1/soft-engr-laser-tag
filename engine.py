@@ -1,12 +1,12 @@
 """
-engine.py mk2 - Photon Laser Tag Engine (2nd Edition) - 9/30/25
+engine.py - Photon Laser Tag Engine (3rd Edition) - 11/13/25
 
 Protocols: 
 - Start Code: "202" (must wait 3 seconds after start_game())
 - Stop code: "221" (must send 3 times)
 - Event format: "ATTACKER:TARGER" (str, no JSON)
     ** TARGET can be hardware_id OR special codes "43" or "53"
-- Event Acknowledgement: Plain string response each event ("Okay", "Acknowledged")
+- Event Acknowledgement: Plain string response each event ("Okay", "    ")
 
 Data Model (memory only):
 - Player keyed by hardware_id; tracks username, team, score
@@ -28,8 +28,15 @@ import pygame
 # | Scoring Rules |
 STANDARD_HIT = 10 # 10 Points for P2P Combat
 BASE_43_HIT = 100 # 100 Points for Hitting Base 43
-BASE_53_HIT = 500 # 500 Points for Hitting Base 53
+BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 
+# | Music Engine |
+# pygame.init()
+pygame.mixer.init()
+random_track_num = random.randint(1,8)
+mp3_file = "Track0" + str(random_track_num) + ".mp3"
+pygame.mixer.music.load(mp3_file)
+pygame.mixer.music.set_volume(1)
 
 # | Player Object Initialization | 
 class Player:
@@ -38,19 +45,16 @@ class Player:
         self.username = username
         self.team     = team
         self.score    = 0 # Score initializes to 0 for game start
+        self.has_icon = False
         
-# | Music Engine |
-pygame.init()
-pygame.mixer.init()
-random_track_num = random.randint(1,8)
-mp3_file = "photon_audio/Track0" + str(random_track_num) + ".mp3"
-pygame.mixer.music.load(mp3_file)
-pygame.mixer.music.set_volume(1)
+        
         
 # | Main Game Engine |
 class GameEngine:
     def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=300): #Initialized Values for Game Settings (Should NOT Change)
-        self.players: dict[str, Player] = {} # Dictionary to hold the list of players
+        self.players: dict[int, Player] = {} # Dictionary to hold the list of players
+        
+        self.ui_messages = []
         
         self.time_left = game_time
         self.running = False
@@ -69,16 +73,24 @@ class GameEngine:
         
         self._threads: list[threading.Thread] = [] # Threads if desired
         
+    def add_to_ui_messages(self, text: str):
+        self.ui_messages.append(str(text))
+
+    def get_ui_messages(self) -> list[str]:
+        return self.ui_messages.copy()
+        
     def start_music(self):
         pygame.mixer.music.play()    
-    # Function to Change the Target IP for outgoing messages (before game start)
+        
     def change_ip(self, new_ip: str):
         self.ip = new_ip
         print(f"[engine] send target ip =  {self.ip}")
         
     # | Public API |
     def start_game(self):
-        """Start the Network and Game timer, wait 3 seconds --> send Start Code '202'"""
+        
+        self.send_code(202)
+        
         if self.running:
             return
         self.running = True
@@ -94,12 +106,6 @@ class GameEngine:
         # Initialize Listen, Send, Timer Threads
         self._start_thread(self._listen_loop, name="listen")
         self._start_thread(self._send_loop, name="send")
-        self._start_thread(self._game_loop, name="game")
-        
-        # Start Thread (On own delayed thread so UI not blocked)
-        self._start_thread(self._delayed_start_code, name="start_code")
-        
-        # pygame.mixer.music.play()
         
         print("[engine] Game Started!")
     
@@ -136,35 +142,20 @@ class GameEngine:
             
         print("[engine] Game stopped")
         
-    def join_player(self, username: str):
-        """Add new player with auto-gen hardware ID/team"""
+    def join_player(self, username: str, hw_id: int):
+        team = "red" if hw_id % 2 == 0 else "green"
         
-        # Generate a random 4-digit hex hardware ID
-        rand_num = random.randint(1, 9999)
-        hw_id = f"hw0x{rand_num:04x}"
-        
-        #Assign team (Even = Red, Odd = Green)
-        team = "red" if rand_num % 2 == 0 else "green"
-        
-        # Add new player to Player List
         if hw_id not in self.players:
             self.players[hw_id] = Player(hw_id, username, team)
-            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
-            self.send_queue.put(temp_string)
+            self.send_queue.put(f"Player joined: {username} ({hw_id}) [{team}]")
+            return True
         else:
-            # If collision (unlikely), regenrate player
-            temp_string = f"Player joined: {username} ({hw_id}) [{team}]"
-            self.send_queue.put(temp_string)
-            return self.join_player(username)
+            print("HWID Dupe")
+            return False
         
         # Register Broadcast
         self.send_text(f"REG: {hw_id}:{username}:{team}")
         
-    # Remove Specific Player    
-    def remove_player(self, hw_id: str):
-        if hw_id in self.players:
-            print(f"[engine] Player removed: {self.players[hw_id].username} ({hw_id})")
-            del self.players[hw_id]
             
     # Clear Player List
     def clear_player_list(self):
@@ -175,16 +166,19 @@ class GameEngine:
             
     # | Network Help |
     def send_code(self, code: str):
-        """Queue code to be sent ('202', '221')"""
         self.send_queue.put(str(code))
         
     def send_text(self, text: str):
-        """Queue a string message to be sent"""
         self.send_queue.put(str(text)) 
         
     # |Event Application (Internal) |
-    def _apply_hit(self, attacker_hwid: str, target_code: str):
+    def _apply_hit(self, attacker_hwid: int, target_code: int):
         """Apply the scoring/broadcast rules for incoming 'A:B' string"""
+        print(f"applying hit: attacker_hwid={attacker_hwid} target_code={target_code}")
+        
+        print("DEBUG - players dict keys:", list(self.players.keys()))
+        print("DEBUG - attacker_hwid     :", repr(attacker_hwid))
+
         attacker = self.players.get(attacker_hwid)
         if attacker is None:
             self.send_text("ERR:unknown-attacker")
@@ -192,18 +186,22 @@ class GameEngine:
             return
         
         # | Base Hits |
-        if target_code == "43": # Green Base Hit: Red Team + 100
-            if attacker.team == "red":
+        if target_code == 43: # Green Base Hit: Red Team + 100
+            if attacker.team == "green":
                 attacker.score += BASE_43_HIT
+                attacker.has_icon = True
                 print(f"[engine] Red Base Score! {attacker.username} + {BASE_43_HIT}")
+                self.ui_messages.append(f"{attacker.username} hit Red Base!")
                 self.send_code("43")
                 return
             
-        if target_code == "53": # Green Base Hit: Red Team + 100
-            if attacker.team == "green":
+        if target_code == 53: # Green Base Hit
+            if attacker.team == "red":
                 attacker.score += BASE_53_HIT
+                attacker.has_icon = True
                 print(f"[engine] Green Base Score! {attacker.username} + {BASE_53_HIT}")
-                self.send_code("53")
+                self.ui_messages.append(f"{attacker.username} hit Green Base!")
+                self.send_code("53")    
                 return
             
         # | Player Hits |
@@ -218,6 +216,7 @@ class GameEngine:
             target.score -= 10
             print(f"[engine] Friendly Fire: {attacker.username} ({attacker.hw_id})"
                   f"hit {target.username} ({target.hw_id}), -10 each")
+            self.ui_messages.append(f"Friendly Fire: {attacker.username} --> {target.username}")
             
             # Broadcast Equipment IDs
             self.send_code(attacker.hw_id)
@@ -226,11 +225,12 @@ class GameEngine:
             
         # Enemy Hit (Attacker +10 Points)
         attacker.score += STANDARD_HIT
-        print(f"[engine] Ebemy hit: {attacker.username} ({attacker.hw_id})"
-              f"hit {target.username} ({target.hw_id}), -{STANDARD_HIT}")
+        print(f"[engine] Enemy hit: {attacker.username} ({attacker.hw_id}) hit {target.username} ({target.hw_id}), +{STANDARD_HIT}")
+        self.ui_messages.append(f"Enemy Hit: {attacker.username} --> {target.username}")
         
         # Broadcast Target's Equipment ID
         self.send_code(target.hw_id)
+        print("\n")
                   
     # | Necessary Threads |
     def _listen_loop(self):
@@ -241,6 +241,8 @@ class GameEngine:
                 msg = data.decode(errors="ignore").strip()
                 if not msg:
                     continue
+                print("\n")
+                print(f"recieved packet: {msg}")
                 
                 # EXACTLY ONE COLON
                 if ":" not in msg:
@@ -254,12 +256,18 @@ class GameEngine:
                 attacker = attacker.strip() # Removes whitespace
                 target = target.strip()
                 
-                if attacker and target:
-                    self.event_queue.put((attacker, target)) #If receives a valid attacker and target, send message
-                    self.send_text("Acknowledged") # Acknowledge Receipt of Valid Packet
-                else:
-                    self.send_text("ERR: bad-format") #Error Message: Incorrect Format for message (missing target, missing attacker, extra info, etc...)
-                    print(f"[engine] Bad packet (ignored): {msg}")
+                print(f"attacker = {attacker}")
+                print(f"target = {target}")
+
+                try:
+                    attacker_id = int(attacker)
+                    target_id   = int(target)
+                except ValueError:
+                    self.send_text("ERR: bad-format")
+                    print(f"[engine] Bad packet (non-numeric IDs): {msg}")
+                    return
+
+                self.event_queue.put((attacker_id, target_id))
                     
             except socket.timeout: #In case something goes wrong
                 continue
@@ -274,7 +282,7 @@ class GameEngine:
         address  = (self.ip, self.send_port)
         while self.running or not self.send_queue.empty():
             try:
-                msg = self.send_queue.get(timeout=0.5)
+                msg = self.send_queue.get(timeout=0.1)
                 line = msg if isinstance(msg, str) else str(msg)
             except queue.Empty:
                 continue
@@ -285,26 +293,8 @@ class GameEngine:
                 break
             except Exception as e:
                 print(f"[engine] Send error: {e}")
-                    
-    def _game_loop(self):
-        """Game Countdown; on zero, send stop code and halt program"""
-        while self.running and self.time_left > 0:
-            time.sleep(1) # Wait 1 milisecond
-            self.time_left -= 1 # Decremement Time Remaining
-            
-        if not self.running: # Don't double start
-            return
         
-        # Game Over
-        self.stop_game()
-        
-    def _delayed_start_code(self):
-        """Sleep for 3 seconds and start game AFTER (emit start code '202' One time)"""
-        t0 = time.time()
-        while self.running and (time.time() - t0) < 3.0: # 3 Second Wait before game start
-            time.sleep(0.05)
-            if self.running:
-                self.send_code("202")
+
                 
     # | Thread Helper |
     def _start_thread(self, target, name: str = ""): # Helps Initialize New Threads
