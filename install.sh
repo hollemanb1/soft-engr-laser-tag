@@ -23,13 +23,5 @@ DO $$BEGIN
 END$$;
 SQL
 
-sudo -u postgres psql -v ON_ERROR_STOP=1 -d photon <<'SQL'
-CREATE TABLE IF NOT EXISTS players (
-  id       INTEGER PRIMARY KEY,
-  codename VARCHAR(255) NOT NULL
-);
-SQL
-
-
 echo "Packages installed. Opening application..."
 python3 main.py
