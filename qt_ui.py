@@ -1,5 +1,5 @@
 """
-qt_ui.py
+qt_ui.py - 11/13/25
 ---------
 All PyQt UI components.
 
@@ -26,13 +26,11 @@ from PyQt5.QtWidgets import (
     QListWidget, QStackedWidget, QLineEdit, QApplication,
     QMainWindow, QSizePolicy
 )
-from PyQt5.QtGui import QPixmap, QFont, QImage
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPixmap, QFont, QImage, QKeySequence, QTextCursor
+from PyQt5.QtCore import Qt, QTimer, QTime
 from db_helper import search_player, add_player  # add this import
 from PyQt5.QtWidgets import QShortcut
-from PyQt5.QtGui import QKeySequence, QPixmap
-
-
+from PyQt5 import QtGui
 
 
 # at top of file:
@@ -50,6 +48,10 @@ def load_pix_safe(path: str):
     except Exception as e:
         print(f"[WARN] load_pix_safe failed for {path}: {e}")
     return None
+
+
+
+
 
 
 
@@ -85,7 +87,7 @@ def init_app():
             padding: 6px;
             border-radius: 4px;
         }
-        QPushButton:hover {                                                                 # Hover effect for buttons (mouse over the button, not pressed) 
+        QPushButton:hover {                                                                 # Hover effect for buttons (mouse over the button, not pressed)
             background-color: #555;
         }
     """)
@@ -99,70 +101,116 @@ class ScoreboardWindow(QMainWindow):                                            
     def __init__(self, engine):
         super().__init__()
 
-        self.in_countdown = False
+        self.setMinimumSize(720, 820)   # width, height
 
         self.engine = engine                                                                # set engine reference for later usage
 
         self.setWindowTitle("Game Launcher")                                                # window title
-        self.setFixedSize(720, 480)
 
         self.stack = QStackedWidget()                                                       # stack to hold multiple pages (settings + scoreboard)
         self.setCentralWidget(self.stack)                                                   # set stack as central widget of main window, allowing for page switching
 
         # --- Build pages ---
-        #self.settings_page = Build_Settings_Screen(self.start_game, self.engine)            # settings page: consists of sidebar + sub-pages
-        self.settings_page = Build_Settings_Screen(self.start_game_with_countdown_on_scoreboard, self.engine)
-
+        self.settings_page = Build_Settings_Screen(self, self.start_game, self.qt_clear_list, self.engine)
         self.scoreboard_page = Build_Scoreboard_Screen(self.go_to_settings)                 # scoreboard page: consists of team tables + message box
-        self.game_timer = None
-        self.game_seconds = 0
-        self.game_clock_label = None
+        self.message_box = self.scoreboard_page.message_box
+
         # --- Add pages to stack ---
         self.stack.addWidget(self.settings_page)                                            # index 0
         self.stack.addWidget(self.scoreboard_page)                                          # index 1
 
         # Show settings first
         self.stack.setCurrentIndex(0)
+        
+        self.joined_codenames = set()
 
+
+    def go_to_settings(self):
+        self.stack.setCurrentIndex(0)
+
+    def go_to_scoreboard(self):
+        self.stack.setCurrentIndex(1) 
 
     def keyPressEvent(self, event):
         if self.stack.currentWidget() is self.settings_page:
             if event.key() == Qt.Key_F5:
-                self.start_game_with_countdown_on_scoreboard()
+                self.start_game()
                 return
             elif event.key() == Qt.Key_F12:
-                self.engine.clear_player_list()
-                # also clear the visible list in Settings UI
-                lst = self.settings_page.findChild(QListWidget, "local_ui_player_list")
-                if lst:
-                    lst.clear()
-                print("Player List Cleared!")
+                self.qt_clear_list()
                 return
         super().keyPressEvent(event)
 
-
     def start_game(self):
+        self.refresh_scoreboard()
+        self.start_game_countdown("Get Ready: ", 30, self.start_main_game)
+
+
+    def start_main_game(self):
+        self.refresh_scoreboard()
+        self.start_game_countdown("Time Left: ", 360, self.stop_game)
+
         self.engine.start_game()
         self.stack.setCurrentIndex(1)
 
         # Start poll timer here
-        self.poll_timer = QTimer(self)                                                      # poll: to regularly check for new events from the engine 
+        self.poll_timer = QTimer(self)                                                      # poll: to regularly check for new events from the engine
         self.poll_timer.timeout.connect(self._poll_events)                                  # connect the timer's timeout signal to the _poll_events method
         self.poll_timer.start(200)                                                          # poll every 200 ms
 
+    def stop_game(self):
+        print("stopping game...")
+        self.engine.stop_game()
+        self.close()
+
+    def start_game_countdown(self, message: str, count: int, func=None):
+        self.stack.setCurrentIndex(1)
+        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabel")
+        if not self.countdown_label:
+            raise RuntimeError("QLabel 'countdownLabel' not found on scoreboard_page")
+
+        self._message = message
+        self._count = int(count)
+        self.countdown_label.setText(f"{self._message}{self._count}")
+
+        if getattr(self, "_countdown_timer", None):
+            self._countdown_timer.stop()
+
+        self._countdown_timer = QTimer(self)
+        # pass a callable, don't call it
+        self._countdown_timer.timeout.connect(partial(self._tick_game_countdown, func))
+        self._countdown_timer.start(1000)
+
+    def _tick_game_countdown(self, func):
+        self._count -= 1
+
+        # Start Music at 17 (For timing purposes)
+        if self._count == 16:
+            self.engine.start_music()
+
+        if self._count < 0:
+            self._countdown_timer.stop()
+            self.countdown_label.clear()
+            if callable(func):
+                func()  # <— actually call it
+            return
+        self.countdown_label.setText(f"{self._message}{self._count}")
+        
     def _poll_events(self):
         self.engine.process_pending_events()                                                # process any pending events in the engine
-        self.refresh_scoreboard()                                                           # refresh scoreboard to display accurate data
-                                                # set current index to 1 to show the scoreboard page
-    
-    def refresh_scoreboard(self):
-        players = list(self.engine.players.values())
-        #print("[UI] refresh_scoreboard: players =", [p.username for p in players])  # <--
+        self.refresh_scoreboard()  
 
-        # TODO: replace this split with your real team logic if you have one
-        mid = len(players) // 2
-        red_team = players[:mid]
-        green_team = players[mid:]
+    #################################
+    ###### Scoreboard Methods #######
+    #################################
+
+    def refresh_scoreboard(self):
+        self.refresh_messages()
+        
+        players = list(self.engine.players.values())
+        
+        red_team   = [p for p in players if getattr(p, "team", "").lower() == "red"]
+        green_team = [p for p in players if getattr(p, "team", "").lower() == "green"]
 
         red_table   = self.scoreboard_page.findChild(QTableWidget, "table_red")
         green_table = self.scoreboard_page.findChild(QTableWidget, "table_green")
@@ -177,196 +225,73 @@ class ScoreboardWindow(QMainWindow):                                            
         if green_total:
             green_total.setText(str(sum(p.score for p in green_team)))
 
-    def _populate_team_table(self, table, team):
+    def _populate_team_table(self, table: QTableWidget, team):
         if table is None:
             return
         table.setRowCount(len(team))
         for row, p in enumerate(team):
             name_item  = QTableWidgetItem(" " + p.username)
             score_item = QTableWidgetItem(str(p.score))
+
+            # accept either attribute name
+            has_icon = getattr(p, "has_base_icon", getattr(p, "has_icon", False))
+            if has_icon:
+                BASE_DIR = os.path.dirname(__file__)
+                icon_path = os.path.join(BASE_DIR, "baseicon.jpg")
+                if os.path.exists(icon_path):
+                    icon = QPixmap(icon_path).scaled(20, 20, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    name_item.setData(Qt.DecorationRole, icon)
+
             name_item.setTextAlignment(Qt.AlignLeft  | Qt.AlignVCenter)
             score_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             table.setItem(row, 0, name_item)
             table.setItem(row, 1, score_item)
+            
+    def refresh_messages(self):
+        if getattr(self, "message_box", None) is None:
+            self.message_box = self.scoreboard_page.findChild(QTextEdit, "messageBox")
+        mb = self.message_box
+        if mb is None:
+            return
 
+        max_lines = 34
 
-    def go_to_settings(self):
-        self.stack.setCurrentIndex(0)                                                       # traversal: switch to settings page
+        msgs = self.engine.get_ui_messages()  # adjust if your engine is in a different attr
+        lines = msgs[-max_lines:] if msgs else []
 
-    def go_to_scoreboard(self):
-        self.stack.setCurrentIndex(1)                                                       # traversal: switch to scoreboard page
+        # render
+        mb.setPlainText("\n".join(lines))
 
-
-
-#------------------------------------------------------------------------------#
-    # Countdown functionality
+        cur = mb.textCursor()
+        cur.movePosition(QtGui.QTextCursor.End)
+        mb.setTextCursor(cur)
+        mb.ensureCursorVisible()
+        
+    ###################################
+    ###### Miscellaneous Methods ######
+    ###################################
     
-    # need to create a game start countdown that goes from 30 ... 0 
-    # this countdown will be at the top middle of the screen
-    # it will appear while in the main
-    # occurs after start is pressed and countdown begins
-
-    def start_countdown(self):
-        folder = "countdown_images/"  # path to your folder
-        for i in range(31):          # goes from 0 to 30
-            filename = f"{i}.tif"  # or .jpg, .jpeg, etc.
-            path = os.path.join(folder, filename)
-            if os.path.exists(path):
-                print(f"Opening {path}")
-                img = Image.open(path)
-                # do something with img (e.g., display, resize, etc.)
-            else:
-                print(f"File {path} not found.")
-
-        
-    def start_with_countdown(self):
-        # ensure we're on the menu page
-        self.stack.setCurrentIndex(0)
-        
-        # find the label in the settings page once
-        self.countdown_label = self.settings_page.findChild(QLabel, "countdownLabel")
-        self._count = 30
-
-        # draw first frame immediately
-        self._update_countdown_label(self._count)
-
-        # tick every second
-        self._countdown_timer = QTimer(self)
-        self._countdown_timer.timeout.connect(self._tick_countdown)
-        self._countdown_timer.start(1000)
-
-    def _tick_countdown(self):
-        self._count -= 1
-        if self._count < 0:
-            # done → clear label, stop timer, start game
-            self._countdown_timer.stop()
-            if self.countdown_label:
-                self.countdown_label.clear()
-            self.start_game()
-            return
-        self._update_countdown_label(self._count)
-
-    def _update_countdown_label(self, n: int):
-        folder = "countdown_images"
-        path = os.path.join(folder, f"{n}.tif")  # keep your .tif if you want
-        pm = load_pix_safe(path) if os.path.exists(path) else None
-        if pm:
-            self.countdown_label.setPixmap(pm.scaled(
-                self.countdown_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.countdown_label.setText("")
-        else:
-            self.countdown_label.setPixmap(QPixmap())
-            self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;")
-
-    def _update_scoreboard_countdown(self, n: int):
-        if not self.countdown_label:
-            return
-        folder = "countdown_images"
-        path = os.path.join(folder, f"{n}.tif")
-        pm = load_pix_safe(path) if os.path.exists(path) else None
-        if pm:
-            self.countdown_label.setPixmap(pm.scaled(
-                self.countdown_label.size(),
-                Qt.KeepAspectRatio,
-                Qt.SmoothTransformation
-            ))
-            self.countdown_label.setText("")
-        else:
-            self.countdown_label.setPixmap(QPixmap())
-            self.countdown_label.setText(str(n))
-            self.countdown_label.setStyleSheet("background:#1b1b1b; border:1px solid #444; font-size:36px; font-weight:bold;")
-
-    def start_game_with_countdown_on_scoreboard(self):
-        self.stack.setCurrentIndex(1)
-
-        if not hasattr(self, "poll_timer") or self.poll_timer is None:
-            self.poll_timer = QTimer(self)
-            self.poll_timer.timeout.connect(self._poll_events)
-            self.poll_timer.start(200)
-
-        self.refresh_scoreboard()        # <--- draw current players NOW
-
-        self.in_countdown = True
-        self.countdown_label = self.scoreboard_page.findChild(QLabel, "countdownLabelScore")
-        self._count = 30
-            
-        self._update_scoreboard_countdown(self._count)
-
-        self._countdown_timer = QTimer(self)
-        self._countdown_timer.timeout.connect(self._tick_scoreboard_countdown)
-        self._countdown_timer.start(1000)
-
-
-    def _tick_scoreboard_countdown(self):
-        self._count -= 1
-        
-        # Start Music at 17 (For timing purposes)
-        if self._count == 18:
-            self.engine.start_music()
-            
-        if self._count < 0:
-            self._countdown_timer.stop()
-            if self.countdown_label:
-                self.countdown_label.clear()
-            self.engine.start_game()
-            self.in_countdown = False          # resumes UI refresh
-            self.stack.setCurrentIndex(1)
-
-            self.start_game_clock(360)
-            self.refresh_scoreboard()
-            return
-        self._update_scoreboard_countdown(self._count)
-
-    def _poll_events(self):
-        self.engine.process_pending_events()
-        self.refresh_scoreboard()    # <--- remove the in_countdown check
+    def qt_clear_list(self):
+        self.engine.clear_player_list()
+        # also clear the visible list in Settings UI
+        lst = self.settings_page.findChild(QListWidget, "local_ui_player_list")
+        if lst:
+            lst.clear()
+            print("Player List Cleared!")
+        print(self.joined_codenames)
+        self.joined_codenames = set()
+        print(self.joined_codenames)
 
 
 
-    def start_game_clock(self, seconds: int = 360):
-        self.game_seconds = max(0, seconds)
-        # pick up the label each time in case the page was rebuilt
-        self.game_clock_label = self.scoreboard_page.findChild(QLabel, "gameClockLabel")
-        self._update_game_clock_label()
 
-        # stop any prior timer
-        if hasattr(self, "game_timer") and self.game_timer:
-            self.game_timer.stop()
-
-        self.game_timer = QTimer(self)
-        self.game_timer.timeout.connect(self._tick_game_clock)
-        self.game_timer.start(1000)
-
-    def _tick_game_clock(self):
-        self.game_seconds -= 1
-        self._update_game_clock_label()
-        if self.game_seconds <= 0:
-            # time's up
-            self.game_timer.stop()
-            # If you have an engine hook, call it; otherwise just log.
-            if hasattr(self.engine, "end_game"):
-                self.engine.end_game()
-            print("[UI] Game clock finished.")
-
-    def _update_game_clock_label(self):
-        if not self.game_clock_label:
-            self.game_clock_label = self.scoreboard_page.findChild(QLabel, "gameClockLabel")
-        if self.game_clock_label:
-            m, s = divmod(max(0, self.game_seconds), 60)
-            self.game_clock_label.setText(f"{m:02d}:{s:02d}")
-
-#------------------------------------------------------------------------------#
 
 # Simply used for showing the splash screen
 def Start_App(app, window):
     splash = QLabel()                                                                       # splash screen is a QLabel; it will display an image
     pixmap = QPixmap("logo.jpg").scaled(720, 458, Qt.KeepAspectRatioByExpanding)            # load and scale the image to fit the splash screen size
     splash.setPixmap(pixmap)                                                                # set the loaded image to the scaled splash QLabel
-    splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)                         # set window flags to make it a splash screen and frameless   
+    splash.setWindowFlags(Qt.SplashScreen | Qt.FramelessWindowHint)                         # set window flags to make it a splash screen and frameless
     splash.setFixedSize(720, 458)                                                           # set fixed size for the splash screen
     splash.show()                                                                           # make the splash screen visible
 
@@ -374,18 +299,18 @@ def Start_App(app, window):
     QTimer.singleShot(2000, lambda: (splash.close(), window.show()))                        # after 2 seconds, close splash and show main window, yay!
 
 
-def build_form_box(box_title, fields):                                                      # builds a form box with a title and multiple fields                     
+def build_form_box(box_title, fields):                                                      # builds a form box with a title and multiple fields
     box = QWidget()
     box.setStyleSheet("""
         background-color: #333;
         color: white;
         font-size: 16px;
     """)
-    box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)                           # make box expand horizontally but not vertically       
-    box_layout = QVBoxLayout(box)                                                           # vertical layout for the box         
+    box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)                           # make box expand horizontally but not vertically
+    box_layout = QVBoxLayout(box)                                                           # vertical layout for the box
 
     # Title
-    title = QLabel(box_title)                                                               # title label at the top of the box           
+    title = QLabel(box_title)                                                               # title label at the top of the box
     title.setAlignment(Qt.AlignLeft)
     title.setStyleSheet("font-size: 18px; font-weight: bold; color: white;")
     box_layout.addWidget(title)
@@ -395,19 +320,25 @@ def build_form_box(box_title, fields):                                          
     for field in fields:                                                                    # for each field in the fields list, create a row with a line edit and button
         row = QHBoxLayout()                                                                 # horizontal layout for each row
 
-        line = QLineEdit()                                                                  # line edit for user input           
+        line = QLineEdit() 
+        line.setFixedWidth(430)
         line.setPlaceholderText(field["field_placeholder"])                                 # set placeholder text from field dict
         inputs.append(line)                                                                 # keep reference to line edit
 
-        button = QPushButton(field["button_text"])                                          # button with text from field dict
-        button.setFixedSize(120, 30)
-        buttons.append(button)
+        if field["button_text"] != "blank":
+            button = QPushButton(field["button_text"])                                          # button with text from field dict
+            button.setFixedSize(120, 30)
+            buttons.append(button)
 
-        func = field["button_func"]                                                         # get the function from the field dict
-        button.clicked.connect(partial(func, line))                                         # pass the line itself after button is clicked
-
-        row.addWidget(line)                                                                 # adds the line edit to the row
-        row.addWidget(button)                                                               # adds the button to the row
+            func = field["button_func"]                                                         # get the function from the field dict
+            button.clicked.connect(partial(func, line))                                         # pass the line itself after button is clicked
+            row.addWidget(line)
+            row.addStretch()
+            row.addWidget(button)
+        else:
+            row.addWidget(line)                                                                 
+            row.addStretch()
+                                                                       
         box_layout.addLayout(row)                                                           # adds the row to the box layout, allowing it to be on our main box
 
     return box, {"inputs": inputs, "buttons": buttons}                                      # finally, return the box, inputs, and buttons for later reference
@@ -416,52 +347,77 @@ def build_form_box(box_title, fields):                                          
 
 ##### ADD USER PAGE (Settings Sub-Page) #####
 
-def User_Page(start_callback, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
+def User_Page(self, start_callback, clear_local, engine):                                                                      # page for adding users to the game, allows for inputting of ID and searching for the player
     local_ui_player_list = QListWidget()
-    local_ui_player_list.setObjectName("local_ui_player_list")   
+    local_ui_player_list.setFixedSize(600, 400)
+    local_ui_player_list.setObjectName("local_ui_player_list")
     local_ui_player_list.setStyleSheet("background-color: #333; color: white; font-size: 18px; padding: 3px;")
 
-    def Search(line):           
-        """Search for a player by ID and add them to the engine if found."""
+    def Search(line):
         try:
             player_id = int(line.text())                                                    # trys to get the player ID from the input line
+            hw_id = int(hw_id_input.text().strip())
         except ValueError:
-            # Invalid input
-            search_button.setEnabled(False)                                                 # simple error handling for invalid input                    
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
             search_button.setText("Invalid ID")
             search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
             QTimer.singleShot(1500, Reset_User_UI)
             return
 
-        result = search_player(player_id)                                                   # searches for the player with given ID and saves the result of search
+        result = search_player(player_id)
+        codename = result.get("codename") if result else None
 
-        if result:                                                                          # if the user is found in the DB, add them to the game engine. 
-            codename = result["codename"]
-            engine.join_player(codename)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
 
+        if codename != None and codename in self.joined_codenames:
+            print("username dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("User Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
+
+        if codename != None and not engine.join_player(codename, hw_id):
+            print("HWID Dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("HWID Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
+            
+        if codename != None and result:
+            print("adding user")
+            self.joined_codenames.add(codename)
+            local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")
             search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
-            search_button.setText("Player Added!")                                          # changes button text to indicate success               
+            search_button.setText("Player Added!")                                          # changes button text to indicate success
             search_button.setStyleSheet("background-color: #2a2a2a; color: #33f533;")       # changes button color to green, representing validity
             QTimer.singleShot(1500, Reset_User_UI)                                          # resets the UI after 1.5 seconds, allowing for another search
+        else:
+            search_button.setEnabled(False)                                                     # disables the search button to prevent multiple clicks
+            search_button.setText("Not Found")                                                  # changes button text to indicate failure
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")           # changes button color to red, representing invalidity
+            codename_input.show()                                                               # shows the codename input field for user to enter a codename
+            add_button.show()
 
-        else:                                                                               # now if no player is found witht he ID inputted, the button operations will go as follows
-            # Not found → prompt for codename
-            search_button.setEnabled(False)                                                 # disables the search button to prevent multiple clicks
-            search_button.setText("Not Found")                                              # changes button text to indicate failure
-            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")       # changes button color to red, representing invalidity
-            codename_input.show()                                                           # shows the codename input field for user to enter a codename
-            add_button.show()                                                               # shows the add button for user to click after entering codename
 
     def Add_User(line):                                                                     # now to handle actually adding the player after searching for them
         player_id = int(id_input.text())
-        codename = codename_input.text().strip()                                            # normalizes the codename input for a user mapped to their ID; removes leading/trailing whitespace
+        codename = codename_input.text().strip()
+        hw_id = int(hw_id_input.text().strip())
 
         success = add_player(player_id, codename)                                           # attempts to add the player to the DB, returns True if successful, False otherwise
 
+        if not success and not engine.join_player(codename, hw_id):
+            print("HWID Dupe!")
+            search_button.setEnabled(False)                                                 # simple error handling for invalid input
+            search_button.setText("HWID Dupe")
+            search_button.setStyleSheet("background-color: #2a2a2a; color: #f53333;")
+            QTimer.singleShot(1500, Reset_User_UI)
+            return
+        
         if success:
-            engine.join_player(codename)                                                    # adds the player to the game engine
-            local_ui_player_list.addItem(f"{codename} ({player_id})")                       # adds the player to the local UI list
+            engine.join_player(codename, hw_id)                                             # adds the player to the game engine
+            local_ui_player_list.addItem(f"{codename}({player_id}) HWID = {hw_id}")                       # adds the player to the local UI list
 
             search_button.setEnabled(False)
             search_button.setText("User Added!")
@@ -476,9 +432,10 @@ def User_Page(start_callback, engine):                                          
 
     def Reset_User_UI():                                                                    # now we must handle resetting the UI after a search/add operation
         codename_input.hide()                                                               # hides the codename input field
-        add_button.hide()                                                                   # hides the add button                 
+        add_button.hide()                                                                   # hides the add button
         id_input.clear()                                                                    # clears the ID input field for next input
         codename_input.clear()                                                              # clears the codename input field for next input
+        hw_id_input.clear()
         search_button.setEnabled(True)
         search_button.setText("Search")
         search_button.setStyleSheet("background-color: #333; color: white;")                # allows for searching, resets button text and color to default
@@ -492,12 +449,13 @@ def User_Page(start_callback, engine):                                          
         "Add Player to Game:",
         [
             {"field_placeholder": "Enter Player ID...", "button_text": "Search", "button_func": Search},
+            {"field_placeholder": "Enter HW ID...", "button_text": "blank", "button_func": None},
             {"field_placeholder": "Enter Codename", "button_text": "Add User", "button_func": Add_User}
         ]
     )
 
     # Easier refs
-    id_input, codename_input = refs["inputs"]                                               # gets references to the input fields
+    id_input, hw_id_input, codename_input = refs["inputs"]                                               # gets references to the input fields
     search_button, add_button = refs["buttons"]                                             # gets references to the buttons
 
     codename_input.hide()
@@ -513,12 +471,11 @@ def User_Page(start_callback, engine):                                          
     header_layout.addWidget(header_label)
 
     # unused text box (just placed to the right)
-    dummy_box = QLineEdit()
-    dummy_box.setPlaceholderText("Search Players (not working)")
-    dummy_box.setFixedWidth(180)
-    dummy_box.setAlignment(Qt.AlignCenter)
+    clear_players = QPushButton("Clear Players (F12)")
+    clear_players.clicked.connect(clear_local)
+    clear_players.setFixedWidth(180)
     header_layout.addStretch()
-    header_layout.addWidget(dummy_box)
+    header_layout.addWidget(clear_players)
 
     layout.addWidget(add_user_box)
     layout.addWidget(player_header)
@@ -561,7 +518,7 @@ def Network_Page(engine):
 
 
 ##### Settings Builder (Sidebar + Pages) #####
-def Build_Settings_Screen(start_callback, engine):
+def Build_Settings_Screen(self, start_callback, clear_local, engine):
     container = QWidget()
     container.setStyleSheet("background-color: #333; color: white;")
     main_layout = QVBoxLayout(container)   # vertical: header on top, body below
@@ -570,7 +527,7 @@ def Build_Settings_Screen(start_callback, engine):
     header_layout = QHBoxLayout()
     header_text = QLabel("Settings")
     header_text.setStyleSheet("font-size: 20px; font-weight: bold; padding: 1px;")
-    start_button = QPushButton("Start Game")
+    start_button = QPushButton("Start Game (F5)")
     start_button.clicked.connect(start_callback)
     start_button.setStyleSheet("font-size: 13px; background-color: #2f2f2f")
     header_layout.addWidget(header_text)
@@ -599,7 +556,7 @@ def Build_Settings_Screen(start_callback, engine):
     body_layout.addWidget(menu)
 
     stack = QStackedWidget()
-    stack.addWidget(User_Page(start_callback, engine))
+    stack.addWidget(User_Page(self, start_callback, clear_local, engine))
     stack.addWidget(Network_Page(engine))
     body_layout.addWidget(stack, stretch=1)
 
@@ -607,8 +564,15 @@ def Build_Settings_Screen(start_callback, engine):
     menu.setCurrentRow(0)
 
     main_layout.addLayout(body_layout)
+
     return container
 
+
+
+
+#################################
+######## SCOREBOARD PAGE ########
+#################################
 
 def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     container = QWidget()
@@ -622,38 +586,15 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     header = QHBoxLayout()
     header.setContentsMargins(0, 0, 0, 0)
     header.addStretch()
-
-# 30 second countdown label
-
-    countdown_label = QLabel(" ")                            # big countdown label at top center                      
-    countdown_label.setObjectName("countdownLabelScore")     # give it an object name for later reference
-    countdown_label.setFixedSize(160, 160)                   # fixed size for consistent layout
+    countdown_label = QLabel()
+    countdown_label.setObjectName("countdownLabel")
+    countdown_label.setFixedSize(200, 20)
     countdown_label.setAlignment(Qt.AlignCenter)
-    countdown_label.setStyleSheet("background: transparent; border: none;")
+    countdown_label.setStyleSheet("background-color: #1a1a1a; border: none; font-weight: bold; font-size: 18px; color: red;")
     countdown_label.setAttribute(Qt.WA_TranslucentBackground, True)
-
-
-# 6 minute game clock label
-
-    game_clock = QLabel(" ")                     # start of our 6 minute game time clock
-    game_clock.setObjectName("gameClockLabel")       # give it an object name for later reference
-    game_clock.setFixedSize(160, 160)                # fixed size for consistent layout
-    game_clock.setAlignment(Qt.AlignCenter)          # center align
-    game_clock.setStyleSheet("font-size: 34px; font-weight:bold; color: white;")
-
-
-
-    # Stack them vertically so the clock sits under the big countdown
-
-    clock_column = QVBoxLayout()                    
-    clock_column.addWidget(countdown_label, alignment=Qt.AlignCenter)
-    clock_column.addWidget(game_clock, alignment=Qt.AlignCenter)
-    
-
-    header.addLayout(clock_column)                
+    header.addWidget(countdown_label)
     header.addStretch()
     v_layout.addLayout(header)
-
 
     # --- Body: existing two-team tables (left) + message box (right) ---
     h_layout = QHBoxLayout()
@@ -667,9 +608,14 @@ def Build_Scoreboard_Screen(start_callback, red_team=None, green_team=None):
     h_layout.addLayout(left_layout)
 
     message_box = QTextEdit()
+    message_box.setObjectName("messageBox")
     message_box.setReadOnly(True)
     message_box.setPlaceholderText("Game messages will appear here...")
-    message_box.setStyleSheet("font-size: 14px; background-color: #333; color: white;")
+    message_box.setStyleSheet("font-size: 18px; background-color: #333; color: white; padding: 4px;")
+    message_box.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+    message_box.setReadOnly(True)
+    container.message_box = message_box
     h_layout.addWidget(message_box)
 
     v_layout.addLayout(h_layout)
@@ -690,7 +636,7 @@ def Build_Team_Table(team_name, players, team_color):
     table.horizontalHeader().setVisible(False)
     table.setShowGrid(False)
     table.setStyleSheet(
-        "background-color: #1a1a1a; color: white; font-size: 16px; "
+        "background-color: #1a1a1a; color: white; font-size: 13px; "
         "gridline-color: #1a1a1a; border-radius: 6px;"
     )
 
@@ -705,6 +651,7 @@ def Build_Team_Table(team_name, players, team_color):
 
     table.horizontalHeader().setStretchLastSection(True)
     table.setColumnWidth(0, 200)
+    table.setFixedSize(400, 500)
 
     # Header row
     header_layout = QHBoxLayout()
@@ -736,12 +683,3 @@ def Build_Team_Table(team_name, players, team_color):
     wrapper_layout.addWidget(table)
 
     return wrapper
-
-
-
-
-
-
-    
-    
-
