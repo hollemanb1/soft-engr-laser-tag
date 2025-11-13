@@ -5,15 +5,12 @@ sudo apt update
 
 # Install a specific package (e.g., htop)
 echo "Installing python packages"
-sudo apt install python python3 python3-pyqt5 python3-pyqt5.qtquick python3-pyqt5.qtsvg python3-psycopg2 \
+sudo apt install python python3 python3-pyqt5 python3-pyqt5.qtquick python3-pygame python3-pyqt5.qtsvg python3-psycopg2 \
 postgresql python3-pil
-
-echo "Starting PostgreSQL..."
-sudo systemctl enable --now postgresql
-until sudo -u postgres pg_isready -q; do sleep 1; done
 
 echo "Setting up database (idempotent)..."
 sudo -u postgres psql -v ON_ERROR_STOP=1 <<'SQL'
+
 DO $$BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='student') THEN
     CREATE ROLE student LOGIN PASSWORD 'student';
