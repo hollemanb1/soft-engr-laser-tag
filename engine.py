@@ -229,7 +229,7 @@ class GameEngine:
         self.ui_messages.append(f"Enemy Hit: {attacker.username} --> {target.username}")
         
         # Broadcast Target's Equipment ID
-        self.send_code(f"Okay, {target.hw_id}")
+        self.send_code(target.hw_id)
         print("\n")
                   
     # | Necessary Threads |
