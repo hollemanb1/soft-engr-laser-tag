@@ -16,13 +16,10 @@ import sys, time
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QTimer
 
-from qt_ui import ScoreboardWindow, Start_App   # <-- your old qt_header.py (rename to qt_ui.py)
-from engine import GameEngine                   # <-- new consolidated game logic -- CHANGE 'engine' to 'engine_mk2' to test new engine
-
-from db_helper import init_db
+from qt_ui import ScoreboardWindow, Start_App
+from engine import GameEngine
 
 def main():
-    init_db()  # Ensure DB is set up
     # --- Start Qt app ---
     app = QApplication(sys.argv)
 
@@ -40,4 +37,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
