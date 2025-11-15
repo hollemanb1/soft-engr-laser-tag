@@ -24,6 +24,7 @@ import queue # Data Structure of choice
 import time # For clock
 import random # random hardware IDs
 import pygame
+import os
 
 # | Scoring Rules |
 STANDARD_HIT = 10 # 10 Points for P2P Combat
@@ -35,6 +36,8 @@ BASE_53_HIT = 100 # 500 Points for Hitting Base 53
 pygame.mixer.init()
 random_track_num = random.randint(1,8)
 mp3_file = "Track0" + str(random_track_num) + ".mp3"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+mp3_file = os.path.join(BASE_DIR, "photon_audio", mp3_file)
 pygame.mixer.music.load(mp3_file)
 pygame.mixer.music.set_volume(1)
 
@@ -52,6 +55,8 @@ class Player:
 # | Main Game Engine |
 class GameEngine:
     def __init__(self, ip="127.0.0.1", send_port=7500, recv_port=7501, game_time=300): #Initialized Values for Game Settings (Should NOT Change)
+
+        self.music_started = False
         self.players: dict[int, Player] = {} # Dictionary to hold the list of players
         
         self.ui_messages = []
@@ -80,7 +85,9 @@ class GameEngine:
         return self.ui_messages.copy()
         
     def start_music(self):
-        pygame.mixer.music.play()    
+        if not self.music_started:
+            pygame.mixer.music.play()    
+            self.music_started = True
         
     def change_ip(self, new_ip: str):
         self.ip = new_ip
